@@ -56,8 +56,3 @@ def dashboard(request: Request):
         "dashboard.html",
         {"request": request}
     )
-import os
-
-if os.getenv("RENDER") == "true":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SpendLens Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        h1 {
+            color: #333;
+        }
+        .card {
+            border: 1px solid #ddd;
+            padding: 16px;
+            margin-top: 16px;
+            width: 400px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>SpendLens</h1>
+<p>Your spending summary (current month)</p>
+
+<div class="card" id="summary">
+    Loading...
+</div>
+
+<script>
+fetch("/summary/monthly")
+    .then(res => res.json())
+    .then(data => {
+        const div = document.getElementById("summary");
+        if (data.summary.length === 0) {
+            div.innerHTML = "<p>No transactions for this month.</p>";
+            return;
+        }
+
+        let html = "<ul>";
+        data.summary.forEach(item => {
+            html += `<li><strong>${item.category}</strong>: ₹${item.total}</li>`;
+        });
+        html += "</ul>";
+
+        div.innerHTML = html;
+    });
+</script>
+
+</body>
+</html>

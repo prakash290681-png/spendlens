@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 
+
 router = APIRouter()
 
 # Allow HTTP for local dev only
@@ -70,6 +71,4 @@ def callback(request: Request):
     db.commit()
     db.close()
 
-    return {
-        "transactions_saved": len(spends)
-    }
+    return RedirectResponse(url="/dashboard")

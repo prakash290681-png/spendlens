@@ -35,25 +35,22 @@ results = service.users().messages().list(
     maxResults=500
 ).execute()
 
-    messages = results.get("messages", [])
-    emails = []
+messages = results.get("messages", [])
+emails = []
 
-    for msg in messages:
-        msg_data = service.users().messages().get(
-            userId="me",
-            id=msg["id"],
-            format="metadata",
-            metadataHeaders=["From", "Subject", "Date"]
-        ).execute()
+for msg in messages:
+    msg_data = service.users().messages().get(
+        userId="me",
+        id=msg["id"],
+        format="metadata",
+        metadataHeaders=["From", "Subject", "Date"]
+    ).execute()
 
-        headers = msg_data["payload"]["headers"]
-        email = {
-            h["name"]: h["value"]
-            for h in headers
-        }
+    headers = msg_data["payload"]["headers"]
+    email = {h["name"]: h["value"] for h in headers}
 
-	print("MERCHANT EMAIL:", email.get("From"), "|", email.get("Subject"))
+    print("MERCHANT EMAIL:", email.get("From"), "|", email.get("Subject"))
 
-        emails.append(email)
+    emails.append(email)
 
-    return emails
+return emails

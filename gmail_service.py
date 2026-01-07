@@ -7,6 +7,8 @@ def gmail_timestamp(dt: datetime) -> int:
     return int(time.mktime(dt.timetuple()))
 
 def fetch_recent_emails(access_token: str, max_results=10):
+    print(">>> fetch_recent_emails() CALLED <<<")
+
     now = datetime.now()
     start_of_month = datetime(now.year, now.month, 1)
 
@@ -22,35 +24,38 @@ def fetch_recent_emails(access_token: str, max_results=10):
     service = build("gmail", "v1", credentials=creds)
 
     MERCHANT_SENDERS = ["zomato", "swiggy", "amazon", "flipkart"]
-    
+
     merchant_query = (
-    "(" +
-    " OR ".join([f"from:{m}" for m in MERCHANT_SENDERS]) +
-    f") after:{after_ts} before:{before_ts}"
-)
+        "("
+        + " OR ".join([f"from:{m}" for m in MERCHANT_SENDERS])
+        + f") after:{after_ts} before:{before_ts}"
+    )
 
-results = service.users().messages().list(
-    userId="me",
-    q=merchant_query,
-    maxResults=500
-).execute()
-
-messages = results.get("messages", [])
-emails = []
-
-for msg in messages:
-    msg_data = service.users().messages().get(
+    results = service.users().messages().list(
         userId="me",
-        id=msg["id"],
-        format="metadata",
-        metadataHeaders=["From", "Subject", "Date"]
+        q=merchant_query,
+        maxResults=500
     ).execute()
 
-    headers = msg_data["payload"]["headers"]
-    email = {h["name"]: h["value"] for h in headers}
+    messages = results.get("messages", [])
+    emails = []
 
-    print("MERCHANT EMAIL:", email.get("From"), "|", email.get("Subject"))
+    for msg in messages:
+        msg_data = service.users().messages().get(
+            userId="me",
+            id=msg["id"],
+            format="metadata",
+            metadataHeaders=["From", "Subject", "Date"]
+        ).execute()
 
-    emails.append(email)
+        headers = msg_data["payload"]["headers"]
+        email = {h["name"]: h["value"] for h in headers}
 
-return emails
+        print("MERCHANT EMAIL FROM:", email.get("From"))
+        print("MERCHANT EMAIL SUBJECT:", email.get("Subject"))
+        print("-----")
+
+        emails.append(email)
+
+    return emails
+

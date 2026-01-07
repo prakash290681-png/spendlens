@@ -37,6 +37,7 @@ def fetch_recent_emails(access_token: str, max_results=10):
         maxResults=500
     ).execute()
    
+    print(">>> RAW GMAIL RESULTS:", results)
     print(">>> GMAIL MERCHANT QUERY RESULT KEYS:", results.keys())
     print(">>> GMAIL MERCHANT MESSAGE COUNT:", len(results.get("messages", [])))
     

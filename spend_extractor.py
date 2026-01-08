@@ -41,6 +41,8 @@ def normalize_date(date_str: str):
 
 
 def extract_spend(email: dict):
+    print(">>> EXTRACT_SPEND SUBJECT:", email.get("Subject"))
+
     sender = email.get("From", "")
     subject = email.get("Subject", "")
     date = email.get("Date", "")
@@ -49,9 +51,14 @@ def extract_spend(email: dict):
     category = detect_category(merchant)
     amount = extract_amount(subject)
 
-    return {
+    spend = {
         "merchant": merchant,
         "category": category,
         "amount": amount,
         "date": normalize_date(date)
     }
+
+    print(">>> EXTRACT_SPEND RESULT:", spend)
+
+    return spend
+

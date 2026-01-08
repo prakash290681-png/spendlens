@@ -40,7 +40,10 @@ def fetch_recent_emails(access_token: str, max_results=10):
 
     MERCHANT_SENDERS = ["zomato", "swiggy", "amazon", "flipkart"]
 
-    merchant_query = "(subject:order OR subject:ordered OR subject:confirmation)"
+    merchant_query = (
+      "(subject:order OR subject:ordered OR subject:confirmation) "
+      "newer_than:7d"
+)
 
 
     results = service.users().messages().list(

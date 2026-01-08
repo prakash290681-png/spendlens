@@ -42,7 +42,7 @@ def fetch_recent_emails(access_token: str, max_results=10):
 
     merchant_query = (
       "(subject:order OR subject:ordered OR subject:confirmation) "
-      "newer_than:7d"
+      "newer_than:15d"
 )
 
 

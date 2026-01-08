@@ -27,12 +27,16 @@ def extract_amount(text):
     return 349
 
 
+from datetime import datetime
 
 def normalize_date(date_str: str):
     try:
-        return datetime.strptime(date_str[:25], "%a, %d %b %Y")
-    except:
-        return None
+        # Example: 'Thu, 02 Jan 2026 12:34:56 +0530'
+        return datetime.strptime(date_str[:25], "%a, %d %b %Y %H:%M:%S")
+    except Exception:
+        # fallback to today if parsing fails
+        return datetime.utcnow()
+
 
 
 def extract_spend(email: dict):

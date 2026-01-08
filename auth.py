@@ -53,13 +53,8 @@ def callback(request: Request):
 
     emails = fetch_recent_emails(creds.token, max_results=30)
     order_emails = [e for e in emails if is_order_email(e)]
-    spends = [{
-    "merchant": "Zomato",
-    "category": "Food",
-    "amount": 999,
-    "date": "2026-01-02"
-}]
-
+  
+    spends = [extract_spend(email) for email in order_emails]
 
     db = SessionLocal()
 

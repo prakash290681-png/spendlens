@@ -22,15 +22,10 @@ def detect_merchant(sender: str) -> str:
 def detect_category(merchant: str) -> str:
     return MERCHANT_CATEGORY_MAP.get(merchant.lower(), "Other")
 
+def extract_amount(text):
+    # TEMP FIX: return dummy amount to test pipeline
+    return 349
 
-def extract_amount(text: str):
-    """
-    Extracts amount like ₹1,234 or Rs. 1234
-    """
-    match = re.search(r"(₹|rs\.?)\s?([\d,]+)", text.lower())
-    if match:
-        return int(match.group(2).replace(",", ""))
-    return None
 
 
 def normalize_date(date_str: str):

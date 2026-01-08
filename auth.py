@@ -73,9 +73,12 @@ def callback(request: Request):
             amount=spend["amount"],
             date=spend["date"]
         )
+
+        print(">>> ABOUT TO INSERT TX:", tx)
         db.add(tx)
 
     db.commit()
+    print(">>> DB COMMIT DONE")
+
     db.close()
 
-    return RedirectResponse(url="/dashboard")

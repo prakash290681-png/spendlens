@@ -58,22 +58,38 @@ def callback(request: Request):
 
     db = SessionLocal()
 
+    from datetime import datetime
+
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+
     for spend in spends:
-        if spend["amount"] is None:
-            continue
+    from datetime import datetime
 
-        tx = Transaction(
-            merchant=spend["merchant"],
-            category=spend["category"],
-            amount=spend["amount"],
-            date=spend["date"]
-        )
+current_month = datetime.now().month
+current_year = datetime.now().year
 
-        print(">>> ABOUT TO INSERT TX:", tx)
-        db.add(tx)
+for spend in spends:
+    print(">>> SPEND RAW:", spend)
 
-    db.commit()
-    print(">>> DB COMMIT DONE")
+    if spend["amount"] is None:
+        print(">>> SKIPPED: amount is None")
+        continue
 
-    db.close()
+    if spend["date"] is None:
+        print(">>> SKIPPED: date is None")
+        continue
 
+    if spend["date"].month != current_month or spend["date"].year != current_year:
+        print(">>> SKIPPED: not current month", spend["date"])
+        continue
+
+    print(">>> ACCEPTED SPEND:", spend)
+
+    tx = Transaction(
+        merchant=spend["merchant"],
+        category=spend["category"],
+        amount=spend["amount"],
+        date=spend["date"]
+    )
+    db.add(tx)

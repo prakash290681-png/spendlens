@@ -1,9 +1,15 @@
-
 import os
+from datetime import datetime
+
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 
+from gmail_service import fetch_recent_emails
+from email_filter import is_order_email
+from spend_extractor import extract_spend
+from database import SessionLocal
+from models import Transaction
 
 router = APIRouter()
 
@@ -11,6 +17,7 @@ router = APIRouter()
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+
 
 def create_flow():
     return Flow.from_client_config(
@@ -20,11 +27,12 @@ def create_flow():
                 "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [os.getenv("GOOGLE_REDIRECT_URI")]
+                "redirect_uris": [os.getenv("GOOGLE_REDIRECT_URI")],
             }
         },
-        scopes=SCOPES
+        scopes=SCOPES,
     )
+
 
 @router.get("/auth/login")
 def login():
@@ -33,15 +41,10 @@ def login():
 
     auth_url, _ = flow.authorization_url(
         access_type="offline",
-        prompt="consent"
+        prompt="consent",
     )
     return RedirectResponse(auth_url)
 
-from gmail_service import fetch_recent_emails
-from email_filter import is_order_email
-from spend_extractor import extract_spend
-from database import SessionLocal
-from models import Transaction
 
 @router.get("/auth/callback")
 def callback(request: Request):
@@ -53,43 +56,42 @@ def callback(request: Request):
 
     emails = fetch_recent_emails(creds.token, max_results=30)
     order_emails = [e for e in emails if is_order_email(e)]
-  
     spends = [extract_spend(email) for email in order_emails]
 
     db = SessionLocal()
-
-    from datetime import datetime
 
     current_month = datetime.now().month
     current_year = datetime.now().year
 
     for spend in spends:
-    from datetime import datetime
+        print(">>> SPEND RAW:", spend)
 
-current_month = datetime.now().month
-current_year = datetime.now().year
+        if spend["amount"] is None:
+            print(">>> SKIPPED: amount is None")
+            continue
 
-for spend in spends:
-    print(">>> SPEND RAW:", spend)
+        if spend["date"] is None:
+            print(">>> SKIPPED: date is None")
+            continue
 
-    if spend["amount"] is None:
-        print(">>> SKIPPED: amount is None")
-        continue
+        if (
+            spend["date"].month != current_month
+            or spend["date"].year != current_year
+        ):
+            print(">>> SKIPPED: not current month", spend["date"])
+            continue
 
-    if spend["date"] is None:
-        print(">>> SKIPPED: date is None")
-        continue
+        print(">>> ACCEPTED SPEND:", spend)
 
-    if spend["date"].month != current_month or spend["date"].year != current_year:
-        print(">>> SKIPPED: not current month", spend["date"])
-        continue
+        tx = Transaction(
+            merchant=spend["merchant"],
+            category=spend["category"],
+            amount=spend["amount"],
+            date=spend["date"],
+        )
+        db.add(tx)
 
-    print(">>> ACCEPTED SPEND:", spend)
+    db.commit()
+    db.close()
 
-    tx = Transaction(
-        merchant=spend["merchant"],
-        category=spend["category"],
-        amount=spend["amount"],
-        date=spend["date"]
-    )
-    db.add(tx)
+    return RedirectResponse(url="/dashboard")

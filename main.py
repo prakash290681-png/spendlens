@@ -23,6 +23,14 @@ Base.metadata.create_all(bind=engine)
 def health():
     return {"status": "SpendLens backend running v2"}
 
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request}
+    )
+
+
 @app.get("/summary/monthly")
 def monthly_summary():
     db: Session = SessionLocal()

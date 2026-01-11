@@ -42,7 +42,8 @@ def fetch_recent_emails(access_token: str, max_results=10):
 
     merchant_query = (
         '(from:zomato OR from:swiggy OR from:amazon) '
-        'newer_than:15d'
+        'OR subject:Zomato OR subject:Swiggy '
+        'OR subject:order'
     )
 
 

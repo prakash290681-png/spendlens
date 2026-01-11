@@ -32,13 +32,16 @@ def monthly_summary():
 
     results = (
         db.query(
+	    Transaction.merchant,
             Transaction.category,
-            func.sum(Transaction.amount)
-        )
-        .filter(extract("month", Transaction.date) == month)
-        .filter(extract("year", Transaction.date) == year)
-        .group_by(Transaction.category)
-        .all()
+            func.sum(Transaction.amount).label("total")
+	).filter(
+    	    extract("month", Transaction.date) == current_month,
+    	    extract("year", Transaction.date) == current_year
+	).group_by(
+    	    Transaction.merchant,
+    	    Transaction.category
+	).all()
     )
 
     db.close()
@@ -46,7 +49,11 @@ def monthly_summary():
     return {
         "month": f"{month}-{year}",
         "summary": [
-            {"category": r[0], "total": r[1]} for r in results
+            {"merchant": r.merchant,
+             "category": r.category,
+             "total": r.total
+	    } 
+	    for r in results
         ]
     }
 

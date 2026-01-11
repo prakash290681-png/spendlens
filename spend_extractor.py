@@ -11,20 +11,34 @@ MERCHANT_CATEGORY_MAP = {
     "amazon": "Shopping"
 }
 
-def detect_merchant(sender: str) -> str:
-    sender = sender.lower()
-    for merchant in MERCHANT_CATEGORY_MAP:
-        if merchant in sender:
-            return merchant.capitalize()
+def detect_merchant(sender):
+    s = sender.lower()
+
+    if "zomato" in s:
+        return "Zomato"
+    if "swiggy" in s:
+        return "Swiggy"
+    if "amazon" in s:
+        return "Amazon"
+    if "homeshop18" in s:
+        return "HomeShop18"
+
     return "Unknown"
 
 
-def detect_category(merchant: str) -> str:
-    return MERCHANT_CATEGORY_MAP.get(merchant.lower(), "Other")
 
-def extract_amount(text):
-    # TEMP FIX: return dummy amount to test pipeline
-    return 349
+import re
+
+def extract_amount(text: str):
+    if not text:
+        return None
+
+    match = re.search(r"(₹|Rs\.?)\s?([0-9,]+)", text)
+    if not match:
+        return None
+
+    return int(match.group(2).replace(",", ""))
+
 
 
 from datetime import datetime

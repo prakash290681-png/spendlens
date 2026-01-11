@@ -59,51 +59,26 @@ def callback(request: Request):
     spends = [extract_spend(email) for email in order_emails]
 
     db = SessionLocal()
-
-    current_month = datetime.now().month
-    current_year = datetime.now().year
-
     inserted = 0
 
     for spend in spends:
-    print("SPEND:", spend)
+        print("SPEND:", spend)
 
-    if spend["amount"] is None or spend["date"] is None:
-        continue
+        if spend["amount"] is None or spend["date"] is None:
+            continue
 
-    tx = Transaction(
-        merchant=spend["merchant"],
-        category=spend["category"],
-        amount=spend["amount"],
-        date=spend["date"]
-    )
-    db.add(tx)
-    inserted += 1
+        tx = Transaction(
+            merchant=spend["merchant"],
+            category=spend["category"],
+            amount=spend["amount"],
+            date=spend["date"],
+        )
 
-db.commit()
-print("TOTAL INSERTED:", inserted)
-db.close()
+        db.add(tx)
+        inserted += 1
 
-db = SessionLocal()
+    db.commit()
+    print("TOTAL INSERTED:", inserted)
+    db.close()
 
-inserted = 0
-
-for spend in spends:
-    print("SPEND:", spend)
-
-    if spend["amount"] is None or spend["date"] is None:
-        continue
-
-    tx = Transaction(
-        merchant=spend["merchant"],
-        category=spend["category"],
-        amount=spend["amount"],
-        date=spend["date"]
-    )
-
-    db.add(tx)
-    inserted += 1
-
-db.commit()
-print("TOTAL INSERTED:", inserted)
-db.close()
+    return RedirectResponse(url="/dashboard")

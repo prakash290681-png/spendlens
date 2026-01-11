@@ -32,16 +32,19 @@ def monthly_summary():
 
     results = (
         db.query(
-	    Transaction.merchant,
+            Transaction.merchant,
             Transaction.category,
             func.sum(Transaction.amount).label("total")
-	).filter(
-    	    extract("month", Transaction.date) == current_month,
-    	    extract("year", Transaction.date) == current_year
-	).group_by(
-    	    Transaction.merchant,
-    	    Transaction.category
-	).all()
+        )
+        .filter(
+            extract("month", Transaction.date) == month,
+            extract("year", Transaction.date) == year
+        )
+        .group_by(
+            Transaction.merchant,
+            Transaction.category
+        )
+        .all()
     )
 
     db.close()
@@ -49,17 +52,11 @@ def monthly_summary():
     return {
         "month": f"{month}-{year}",
         "summary": [
-            {"merchant": r.merchant,
-             "category": r.category,
-             "total": r.total
-	    } 
-	    for r in results
+            {
+                "merchant": r.merchant,
+                "category": r.category,
+                "total": r.total
+            }
+            for r in results
         ]
     }
-
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request}
-    )

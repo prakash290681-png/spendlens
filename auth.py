@@ -84,3 +84,26 @@ db.commit()
 print("TOTAL INSERTED:", inserted)
 db.close()
 
+db = SessionLocal()
+
+inserted = 0
+
+for spend in spends:
+    print("SPEND:", spend)
+
+    if spend["amount"] is None or spend["date"] is None:
+        continue
+
+    tx = Transaction(
+        merchant=spend["merchant"],
+        category=spend["category"],
+        amount=spend["amount"],
+        date=spend["date"]
+    )
+
+    db.add(tx)
+    inserted += 1
+
+db.commit()
+print("TOTAL INSERTED:", inserted)
+db.close()

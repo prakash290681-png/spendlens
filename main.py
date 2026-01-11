@@ -21,7 +21,7 @@ Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 def health():
-    return {"status": "SpendLens backend running"}
+    return {"status": "SpendLens backend running v2"}
 
 @app.get("/summary/monthly")
 def monthly_summary():

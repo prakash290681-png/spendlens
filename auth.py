@@ -63,35 +63,24 @@ def callback(request: Request):
     current_month = datetime.now().month
     current_year = datetime.now().year
 
+    inserted = 0
+
     for spend in spends:
-        print(">>> SPEND RAW:", spend)
+    print("SPEND:", spend)
 
-        if spend["amount"] is None:
-            print(">>> SKIPPED: amount is None")
-            continue
+    if spend["amount"] is None or spend["date"] is None:
+        continue
 
-        if spend["date"] is None:
-            print(">>> SKIPPED: date is None")
-            continue
+    tx = Transaction(
+        merchant=spend["merchant"],
+        category=spend["category"],
+        amount=spend["amount"],
+        date=spend["date"]
+    )
+    db.add(tx)
+    inserted += 1
 
-        if (
-            spend["date"].month != current_month
-            or spend["date"].year != current_year
-        ):
-            print(">>> SKIPPED: not current month", spend["date"])
-            continue
+db.commit()
+print("TOTAL INSERTED:", inserted)
+db.close()
 
-        print(">>> ACCEPTED SPEND:", spend)
-
-        tx = Transaction(
-            merchant=spend["merchant"],
-            category=spend["category"],
-            amount=spend["amount"],
-            date=spend["date"],
-        )
-        db.add(tx)
-
-    db.commit()
-    db.close()
-
-    return RedirectResponse(url="/dashboard")

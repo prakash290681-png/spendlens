@@ -8,6 +8,7 @@ import base64
 def gmail_timestamp(dt: datetime) -> int:
     return int(time.mktime(dt.timetuple()))
 
+
 def extract_body(payload):
     if "parts" in payload:
         for part in payload["parts"]:
@@ -21,9 +22,11 @@ def extract_body(payload):
         ).decode("utf-8", errors="ignore")
     return ""
 
-def fetch_recent_emails(access_token: str, max_results=10):
+
+def fetch_recent_emails(access_token: str, max_results=50):
     print(">>> fetch_recent_emails() CALLED <<<")
 
+    # ----- current month range -----
     now = datetime.now()
     start_of_month = datetime(now.year, now.month, 1)
 
@@ -38,25 +41,22 @@ def fetch_recent_emails(access_token: str, max_results=10):
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
 
-    MERCHANT_SENDERS = ["zomato", "swiggy", "amazon", "flipkart"]
-
+    # ----- IMPORTANT FIX: use timestamps in query -----
     merchant_query = (
-        '(from:zomato OR from:swiggy OR from:amazon) '
-        'OR subject:Zomato OR subject:Swiggy '
-        'OR subject:order'
+        f"(from:zomato OR from:swiggy OR from:amazon OR from:flipkart) "
+        f"after:{after_ts} before:{before_ts}"
     )
-
 
     results = service.users().messages().list(
         userId="me",
         q=merchant_query,
-        maxResults=500
+        maxResults=max_results
     ).execute()
-   
+
     print(">>> RAW GMAIL RESULTS:", results)
-    print(">>> GMAIL MERCHANT QUERY RESULT KEYS:", results.keys())
-    print(">>> GMAIL MERCHANT MESSAGE COUNT:", len(results.get("messages", [])))
-    
+    print(">>> GMAIL MERCHANT MESSAGE COUNT:",
+          len(results.get("messages", [])))
+
     messages = results.get("messages", [])
     emails = []
 
@@ -65,13 +65,11 @@ def fetch_recent_emails(access_token: str, max_results=10):
             userId="me",
             id=msg["id"],
             format="full"
-        
         ).execute()
 
         headers = msg_data["payload"]["headers"]
         email = {h["name"]: h["value"] for h in headers}
 
-        # ✅ extract and attach body
         body = extract_body(msg_data["payload"])
         email["Body"] = body
 
@@ -82,4 +80,3 @@ def fetch_recent_emails(access_token: str, max_results=10):
         emails.append(email)
 
     return emails
-

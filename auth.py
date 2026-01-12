@@ -36,6 +36,7 @@ def create_flow():
 
 @router.get("/auth/login")
 def login():
+    print(">>> AUTH LOGIN HIT <<<")
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
 
@@ -48,6 +49,7 @@ def login():
 
 @router.get("/auth/callback")
 def callback(request: Request):
+    print(">>> AUTH LOGIN HIT <<<")
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
 

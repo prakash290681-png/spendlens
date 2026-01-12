@@ -26,7 +26,7 @@ def extract_body(payload):
 def fetch_recent_emails(access_token: str, max_results=50):
     print(">>> fetch_recent_emails() CALLED <<<")
 
-    # ----- current month range -----
+    # ---- current month range ----
     now = datetime.now()
     start_of_month = datetime(now.year, now.month, 1)
 
@@ -41,16 +41,16 @@ def fetch_recent_emails(access_token: str, max_results=50):
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
 
-    # ----- IMPORTANT FIX: use timestamps in query -----
-    merchant_query = (
+    # ---- FINAL, CORRECT QUERY ----
+    final_query = (
         f"(from:zomato OR from:swiggy OR from:amazon OR from:flipkart) "
         f"after:{after_ts} before:{before_ts}"
     )
 
     results = service.users().messages().list(
         userId="me",
-        q=merchant_query,
-        maxResults=max_results
+        q=final_query,
+        maxResults=500
     ).execute()
 
     print(">>> RAW GMAIL RESULTS:", results)

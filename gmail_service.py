@@ -43,8 +43,8 @@ def fetch_recent_emails(access_token: str, max_results=50):
 
     # ---- FINAL, CORRECT QUERY ----
     final_query = (
-        f"(from:zomato OR from:swiggy OR from:amazon OR from:flipkart) "
-        f"after:{after_ts} before:{before_ts}"
+	f'(subject:(zomato OR swiggy OR amazon OR flipkart OR order OR delivered OR invoice)) '
+        f'after:{after_ts} before:{before_ts}'
     )
 
     results = service.users().messages().list(

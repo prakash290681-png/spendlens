@@ -8,10 +8,12 @@ MERCHANT_CATEGORY_MAP = {
     "blinkit": "Grocery",
     "instamart": "Grocery",
     "zepto": "Grocery",
-    "amazon": "Shopping"
+    "amazon": "Shopping",
+    "homeshop18": "Shopping"
 }
 
-def detect_merchant(sender):
+
+def detect_merchant(sender: str) -> str:
     s = sender.lower()
 
     if "zomato" in s:
@@ -26,8 +28,13 @@ def detect_merchant(sender):
     return "Unknown"
 
 
+def detect_category(merchant: str) -> str:
+    if not merchant:
+        return "Other"
 
-import re
+    key = merchant.lower()
+    return MERCHANT_CATEGORY_MAP.get(key, "Other")
+
 
 def extract_amount(text: str):
     if not text:
@@ -40,17 +47,12 @@ def extract_amount(text: str):
     return int(match.group(2).replace(",", ""))
 
 
-
-from datetime import datetime
-
 def normalize_date(date_str: str):
     try:
         # Example: 'Thu, 02 Jan 2026 12:34:56 +0530'
         return datetime.strptime(date_str[:25], "%a, %d %b %Y %H:%M:%S")
     except Exception:
-        # fallback to today if parsing fails
         return datetime.utcnow()
-
 
 
 def extract_spend(email: dict):
@@ -74,4 +76,3 @@ def extract_spend(email: dict):
     print(">>> EXTRACT_SPEND RESULT:", spend)
 
     return spend
-

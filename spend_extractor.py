@@ -61,10 +61,13 @@ def extract_spend(email: dict):
     sender = email.get("From", "")
     subject = email.get("Subject", "")
     date = email.get("Date", "")
+    body = email.get("Body", "")
 
     merchant = detect_merchant(sender)
     category = detect_category(merchant)
-    amount = extract_amount(subject)
+    
+    # IMPORTANT FIX
+    amount = extract_amount(body) or extract_amount(subject)
 
     spend = {
         "merchant": merchant,

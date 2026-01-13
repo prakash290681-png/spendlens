@@ -32,20 +32,31 @@ fetch("/summary/monthly")
     .then(res => res.json())
     .then(data => {
         const div = document.getElementById("summary");
-        if (data.summary.length === 0) {
+
+        if (!data.summary || data.summary.length === 0) {
             div.innerHTML = "<p>No transactions for this month.</p>";
             return;
         }
 
+        let categoryTotals = {};
         let html = "<ul>";
-        data.summary.forEach(item => {
-            html += `<li><strong>${item.category}</strong>: ₹${item.total}</li>`;
-        });
-        html += "</ul>";
 
+        // Merchant-wise rows
+        data.summary.forEach(item => {
+            html += `<li>${item.merchant}: ₹${item.total}</li>`;
+
+            categoryTotals[item.category] =
+                (categoryTotals[item.category] || 0) + item.total;
+        });
+
+        html += "</ul><hr><ul>";
+
+        // Category totals
+        for (const category in categoryTotals) {
+            html += `<li><strong>Total ${category}</strong>: ₹${categoryTotals[category]}</li>`;
+        }
+
+        html += "</ul>";
         div.innerHTML = html;
     });
 </script>
-
-</body>
-</html>

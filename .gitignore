@@ -10,3 +10,18 @@ __pycache__/
 
 # Local database
 spendlens.db
+
+# Environment variables
+.env
+*.env
+GOOGLE_CLIENT_ID*
+GOOGLE_CLIENT_SECRET*
+
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+

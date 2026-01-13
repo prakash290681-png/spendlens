@@ -80,6 +80,7 @@ def extract_spend(email: dict):
         "category": category,
         "amount": amount,
         "date": normalize_date(date),
+	"source_id": email.get("source_id")
     }
 
     print(">>> EXTRACT_SPEND RESULT:", spend)

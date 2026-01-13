@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+from models import Budget
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -121,3 +122,46 @@ def get_budgets(db: Session = Depends(get_db)):
         }
         for b in budgets
     ]
+
+@app.get("/alerts/monthly")
+def monthly_alerts(db: Session = Depends(get_db)):
+    month = datetime.now().month
+    year = datetime.now().year
+
+    # 1️⃣ total spend per category
+    spends = (
+        db.query(
+            Transaction.category,
+            func.sum(Transaction.amount).label("total")
+        )
+        .filter(
+            extract("month", Transaction.date) == month,
+            extract("year", Transaction.date) == year
+        )
+        .group_by(Transaction.category)
+        .all()
+    )
+
+    spend_map = {s.category: s.total for s in spends}
+
+    # 2️⃣ budgets
+    budgets = db.query(Budget).all()
+
+    alerts = []
+
+    for b in budgets:
+        spent = spend_map.get(b.category, 0)
+
+        if spent > b.monthly_limit:
+            alerts.append({
+                "category": b.category,
+                "spent": spent,
+                "limit": b.monthly_limit,
+                "exceeded_by": spent - b.monthly_limit
+            })
+
+    return {
+        "month": f"{month}-{year}",
+        "alerts": alerts
+    }
+

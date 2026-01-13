@@ -11,6 +11,13 @@ from datetime import datetime
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
+from pydantic import BaseModel
+from fastapi import Depends
+
+class BudgetIn(BaseModel):
+    category: str
+    monthly_limit: int
+
 
 app = FastAPI()
 app.include_router(router)
@@ -18,6 +25,14 @@ app.include_router(router)
 templates = Jinja2Templates(directory="templates")
 
 Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 @app.get("/")
 def health():
@@ -32,6 +47,45 @@ def dashboard(request: Request):
 
 
 @app.get("/summary/monthly")
+
+from models import Budget
+
+@app.post("/budget")
+def set_budget(budget: BudgetIn, db: Session = Depends(get_db)):
+    existing = (
+        db.query(Budget)
+        .filter(Budget.category == budget.category)
+        .first()
+    )
+
+    if existing:
+        existing.monthly_limit = budget.monthly_limit
+    else:
+        existing = Budget(
+            category=budget.category,
+            monthly_limit=budget.monthly_limit
+        )
+        db.add(existing)
+
+    db.commit()
+
+    return {
+        "category": existing.category,
+        "monthly_limit": existing.monthly_limit
+    }
+
+@app.get("/budget")
+def get_budgets(db: Session = Depends(get_db)):
+    budgets = db.query(Budget).all()
+
+    return [
+        {
+            "category": b.category,
+            "monthly_limit": b.monthly_limit
+        }
+        for b in budgets
+    ]
+
 def monthly_summary():
     db: Session = SessionLocal()
 

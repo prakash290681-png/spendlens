@@ -52,9 +52,19 @@ def dashboard(request: Request):
 
 
 @app.get("/summary/monthly")
-def monthly_summary(db: Session = Depends(get_db)):
+def monthly_summary():
+    db: Session = SessionLocal()
+
     month = datetime.now().month
     year = datetime.now().year
+
+    # 🔍 DEBUG 1: total rows in DB
+    total_rows = db.query(Transaction).count()
+    print("TOTAL TX IN DB:", total_rows)
+
+    # 🔍 DEBUG 2: show sample dates
+    sample_dates = db.query(Transaction.date).limit(5).all()
+    print("SAMPLE TX DATES:", sample_dates)
 
     results = (
         db.query(
@@ -72,6 +82,21 @@ def monthly_summary(db: Session = Depends(get_db)):
         )
         .all()
     )
+
+    db.close()
+
+    return {
+        "month": f"{month}-{year}",
+        "summary": [
+            {
+                "merchant": r.merchant,
+                "category": r.category,
+                "total": r.total
+            }
+            for r in results
+        ]
+    }
+
 
     return {
         "month": f"{month}-{year}",

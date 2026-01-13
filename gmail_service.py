@@ -44,7 +44,7 @@ def fetch_recent_emails(access_token: str, max_results=50):
 
     # ---- FINAL, CORRECT QUERY ----
     final_query = (
-	f'(subject:(order OR invoice OR receipt OR delivered OR payment)) '
+        f'(subject:("Zomato order" OR "Swiggy order" OR "order was delivered")) '
         f'after:{after_ts} before:{before_ts}'
     )
 

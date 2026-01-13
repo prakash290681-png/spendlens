@@ -12,7 +12,7 @@ def gmail_timestamp(dt: datetime) -> int:
 def extract_body(payload):
     if "parts" in payload:
         for part in payload["parts"]:
-            if part["mimeType"] == "text/plain" and "data" in part["body"]:
+            if part["mimeType"] == "text/html" and "data" in part["body"]:
                 return base64.urlsafe_b64decode(
                     part["body"]["data"]
                 ).decode("utf-8", errors="ignore")
@@ -21,6 +21,7 @@ def extract_body(payload):
             payload["body"]["data"]
         ).decode("utf-8", errors="ignore")
     return ""
+
 
 
 def fetch_recent_emails(access_token: str, max_results=50):

@@ -50,6 +50,7 @@ def login():
 @router.get("/auth/callback")
 def callback(request: Request):
     print(">>> AUTH LOGIN HIT <<<")
+
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
 
@@ -63,36 +64,38 @@ def callback(request: Request):
     db = SessionLocal()
     inserted = 0
 
-for spend in spends:
-    print("SPEND:", spend)
+    for spend in spends:
+        print("SPEND:", spend)
 
-    if spend["amount"] is None or spend["date"] is None:
-        continue
+        if spend["amount"] is None or spend["date"] is None:
+            continue
 
-    # ✅ DUPLICATE CHECK (THIS IS THE FIX)
-    exists = (
-        db.query(Transaction)
-        .filter(Transaction.source_id == spend["source_id"])
-        .first()
-    )
+        # ✅ DUPLICATE CHECK
+        exists = (
+            db.query(Transaction)
+            .filter(Transaction.source_id == spend["source_id"])
+            .first()
+        )
 
-    if exists:
-        print(">>> SKIPPED DUPLICATE:", spend["source_id"])
-        continue
+        if exists:
+            print(">>> SKIPPED DUPLICATE:", spend["source_id"])
+            continue
 
-    tx = Transaction(
-        merchant=spend["merchant"],
-        category=spend["category"],
-        amount=spend["amount"],
-        date=spend["date"],
-        source_id=spend["source_id"]
-    )
+        tx = Transaction(
+            merchant=spend["merchant"],
+            category=spend["category"],
+            amount=spend["amount"],
+            date=spend["date"],
+            source_id=spend["source_id"]
+        )
 
-    db.add(tx)
-    inserted += 1
+        db.add(tx)
+        inserted += 1
 
+    # ✅ THESE MUST BE OUTSIDE THE LOOP
     db.commit()
     print("TOTAL INSERTED:", inserted)
     db.close()
 
     return RedirectResponse(url="/dashboard")
+

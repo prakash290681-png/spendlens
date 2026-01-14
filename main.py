@@ -148,12 +148,14 @@ def get_budgets(db: Session = Depends(get_db)):
         for b in budgets
     ]
 
+from models import Budget
+
 @app.get("/alerts/monthly")
 def monthly_alerts(db: Session = Depends(get_db)):
     month = datetime.now().month
     year = datetime.now().year
 
-    # 1️⃣ total spend per category
+    # 1️⃣ Total spend per category (current month)
     spends = (
         db.query(
             Transaction.category,
@@ -169,24 +171,36 @@ def monthly_alerts(db: Session = Depends(get_db)):
 
     spend_map = {s.category: s.total for s in spends}
 
-    # 2️⃣ budgets
+    # 2️⃣ Budgets
     budgets = db.query(Budget).all()
 
     alerts = []
 
     for b in budgets:
         spent = spend_map.get(b.category, 0)
+        limit = b.monthly_limit
 
-        if spent > b.monthly_limit:
-            alerts.append({
-                "category": b.category,
-                "spent": spent,
-                "limit": b.monthly_limit,
-                "exceeded_by": spent - b.monthly_limit
-            })
+        if spent == 0:
+            continue
+
+        percent = int((spent / limit) * 100)
+
+        if percent >= 100:
+            status = "exceeded"
+        elif percent >= 80:
+            status = "warning"
+        else:
+            continue
+
+        alerts.append({
+            "category": b.category,
+            "spent": spent,
+            "limit": limit,
+            "percent": percent,
+            "status": status
+        })
 
     return {
         "month": f"{month}-{year}",
         "alerts": alerts
     }
-

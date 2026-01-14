@@ -21,6 +21,13 @@ templates = Jinja2Templates(directory="templates")
 
 Base.metadata.create_all(bind=engine)
 
+# ---------- TEMP: RESET DB (REMOVE AFTER USE) ----------
+@app.post("/admin/reset-db")
+def reset_db():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    return {"status": "db reset"}
+
 
 # ---------- DB dependency ----------
 def get_db():
@@ -52,7 +59,7 @@ def dashboard(request: Request):
 
 @app.get("/summary/monthly")
 def monthly_summary(db: Session = Depends(get_db)):
-     print(">>> SUMMARY ENDPOINT HIT <<<")
+    print(">>> SUMMARY ENDPOINT HIT <<<")
 
     month = datetime.now().month
     year = datetime.now().year

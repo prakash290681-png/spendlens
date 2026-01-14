@@ -40,7 +40,7 @@ class BudgetIn(BaseModel):
 # ---------- Routes ----------
 @app.get("/")
 def health():
-    return {"status": "SpendLens backend running v2"}
+    return {"status": "SpendLens backend running v999"}
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -50,23 +50,15 @@ def dashboard(request: Request):
         {"request": request}
     )
 
-
 @app.get("/summary/monthly")
-def monthly_summary():
-    db: Session = SessionLocal()
+def monthly_summary(db: Session = Depends(get_db)):
+     print(">>> SUMMARY ENDPOINT HIT <<<")
 
     month = datetime.now().month
     year = datetime.now().year
 
-    # 🔍 DEBUG 1: total rows in DB
-    total_rows = db.query(Transaction).count()
-    print("TOTAL TX IN DB:", total_rows)
-
-    # 🔍 DEBUG 2: show sample dates
-    sample_dates = db.query(Transaction.date).limit(5).all()
-    print("SAMPLE TX DATES:", sample_dates)
-
-    results = (
+    # 1️⃣ Merchant-wise breakdown
+    merchant_rows = (
         db.query(
             Transaction.merchant,
             Transaction.category,
@@ -83,33 +75,38 @@ def monthly_summary():
         .all()
     )
 
-    db.close()
+    # 2️⃣ Category totals
+    category_rows = (
+        db.query(
+            Transaction.category,
+            func.sum(Transaction.amount).label("total")
+        )
+        .filter(
+            extract("month", Transaction.date) == month,
+            extract("year", Transaction.date) == year
+        )
+        .group_by(Transaction.category)
+        .all()
+    )
 
     return {
         "month": f"{month}-{year}",
-        "summary": [
+        "by_merchant": [
             {
                 "merchant": r.merchant,
                 "category": r.category,
                 "total": r.total
             }
-            for r in results
-        ]
-    }
-
-
-    return {
-        "month": f"{month}-{year}",
-        "summary": [
+            for r in merchant_rows
+        ],
+        "by_category": [
             {
-                "merchant": r.merchant,
                 "category": r.category,
                 "total": r.total
             }
-            for r in results
+            for r in category_rows
         ]
     }
-
 
 @app.post("/budget")
 def set_budget(budget: BudgetIn, db: Session = Depends(get_db)):

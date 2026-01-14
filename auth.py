@@ -65,21 +65,17 @@ def callback(request: Request):
     inserted = 0
 
     for spend in spends:
-        print("SPEND:", spend)
+        print(">>> RAW SPEND:", spend)
 
-        if spend["amount"] is None or spend["date"] is None:
+        if spend.get("amount") is None:
+            print(">>> SKIP: amount None")
             continue
 
-        # ✅ DUPLICATE CHECK
-        exists = (
-            db.query(Transaction)
-            .filter(Transaction.source_id == spend["source_id"])
-            .first()
-        )
-
-        if exists:
-            print(">>> SKIPPED DUPLICATE:", spend["source_id"])
+        if spend.get("date") is None:
+            print(">>> SKIP: date None")
             continue
+
+        print(">>> WILL INSERT:", spend)
 
         tx = Transaction(
             merchant=spend["merchant"],
@@ -92,6 +88,7 @@ def callback(request: Request):
         db.add(tx)
         inserted += 1
 
+        
     # ✅ THESE MUST BE OUTSIDE THE LOOP
     db.commit()
     print("TOTAL INSERTED:", inserted)

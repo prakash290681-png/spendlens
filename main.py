@@ -184,7 +184,8 @@ def monthly_alerts(db: Session = Depends(get_db)):
         spent = spend_map.get(b.category, 0)
         limit = b.monthly_limit
 
-        if spent == 0:
+        # ⛔ skip invalid budgets safely
+        if limit is None or limit <= 0:
             continue
 
         percent = int((spent / limit) * 100)
@@ -194,12 +195,13 @@ def monthly_alerts(db: Session = Depends(get_db)):
         elif percent >= 80:
             status = "warning"
         else:
-            continue
+            continue  # no alert if below 80%
 
         alerts.append({
             "category": b.category,
             "spent": spent,
             "limit": limit,
+            "remaining": max(limit - spent, 0),
             "percent": percent,
             "status": status
         })

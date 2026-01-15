@@ -7,23 +7,14 @@
             font-family: Arial, sans-serif;
             margin: 40px;
         }
-        h1 {
-            color: #333;
-        }
         .card {
             border: 1px solid #ddd;
             padding: 16px;
             margin-top: 16px;
             width: 500px;
         }
-        .warning {
-            color: #b36b00;
-            font-weight: bold;
-        }
-        .exceeded {
-            color: #c0392b;
-            font-weight: bold;
-        }
+        .warning { color: orange; }
+        .exceeded { color: red; }
     </style>
 </head>
 <body>
@@ -31,16 +22,9 @@
 <h1>SpendLens</h1>
 <p>Your spending summary (current month)</p>
 
-<div class="card" id="summary">
-    Loading summary...
-</div>
+<div class="card" id="summary">Loading summary...</div>
+<div class="card" id="alerts">Loading alerts...</div>
 
-<div class="card" id="alerts">
-    Loading alerts...
-</div>
-
-<script>
-/* -------- SUMMARY -------- */
 <script>
 async function loadSummary() {
     const res = await fetch("/summary/monthly");
@@ -75,15 +59,16 @@ async function loadAlerts() {
     const div = document.getElementById("alerts");
 
     if (!data.alerts || data.alerts.length === 0) {
-        div.innerHTML = "✅ No alerts. You are within budget.";
+        div.innerHTML = "<h3>Budget Alerts</h3>✅ No alerts. You are within budget.";
         return;
     }
 
-    let html = "<ul>";
+    let html = "<h3>🚨 Budget Alerts</h3><ul>";
     data.alerts.forEach(a => {
-        html += `<li>
-            <strong>${a.category}</strong>: ₹${a.spent} / ₹${a.limit}
-            (${a.percent}% – ${a.status})
+        const cls = a.status === "exceeded" ? "exceeded" : "warning";
+        html += `<li class="${cls}">
+            ${a.category}: ₹${a.spent} / ₹${a.limit}
+            (${a.percent}% – ${a.status.toUpperCase()})
         </li>`;
     });
     html += "</ul>";
@@ -93,33 +78,6 @@ async function loadAlerts() {
 
 loadSummary();
 loadAlerts();
-</script>
-
-/* -------- ALERTS -------- */
-fetch("/alerts/monthly")
-    .then(res => res.json())
-    .then(data => {
-        const div = document.getElementById("alerts");
-
-        if (!data.alerts || data.alerts.length === 0) {
-            div.innerHTML = "<h3>Budget Alerts</h3><p>✅ No alerts. You are within budget.</p>";
-            return;
-        }
-
-        let html = "<h3>🚨 Budget Alerts</h3><ul>";
-
-        data.alerts.forEach(a => {
-            const cls = a.status === "exceeded" ? "exceeded" : "warning";
-            html += `
-                <li class="${cls}">
-                    ${a.category}: ₹${a.spent} / ₹${a.limit}
-                    (${a.percent}% – ${a.status.toUpperCase()})
-                </li>`;
-        });
-
-        html += "</ul>";
-        div.innerHTML = html;
-    });
 </script>
 
 </body>

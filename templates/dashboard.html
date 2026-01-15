@@ -14,7 +14,15 @@
             border: 1px solid #ddd;
             padding: 16px;
             margin-top: 16px;
-            width: 400px;
+            width: 500px;
+        }
+        .warning {
+            color: #b36b00;
+            font-weight: bold;
+        }
+        .exceeded {
+            color: #c0392b;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -24,39 +32,60 @@
 <p>Your spending summary (current month)</p>
 
 <div class="card" id="summary">
-    Loading...
+    Loading summary...
+</div>
+
+<div class="card" id="alerts">
+    Loading alerts...
 </div>
 
 <script>
+/* -------- SUMMARY -------- */
 fetch("/summary/monthly")
     .then(res => res.json())
     .then(data => {
         const div = document.getElementById("summary");
 
-        if (!data.summary || data.summary.length === 0) {
+        if (!data.by_category || data.by_category.length === 0) {
             div.innerHTML = "<p>No transactions for this month.</p>";
             return;
         }
 
-        let categoryTotals = {};
-        let html = "<ul>";
-
-        // Merchant-wise rows
-        data.summary.forEach(item => {
-            html += `<li>${item.merchant}: ₹${item.total}</li>`;
-
-            categoryTotals[item.category] =
-                (categoryTotals[item.category] || 0) + item.total;
+        let html = "<h3>Category Summary</h3><ul>";
+        data.by_category.forEach(item => {
+            html += `<li><strong>${item.category}</strong>: ₹${item.total}</li>`;
         });
+        html += "</ul>";
 
-        html += "</ul><hr><ul>";
+        div.innerHTML = html;
+    });
 
-        // Category totals
-        for (const category in categoryTotals) {
-            html += `<li><strong>Total ${category}</strong>: ₹${categoryTotals[category]}</li>`;
+/* -------- ALERTS -------- */
+fetch("/alerts/monthly")
+    .then(res => res.json())
+    .then(data => {
+        const div = document.getElementById("alerts");
+
+        if (!data.alerts || data.alerts.length === 0) {
+            div.innerHTML = "<h3>Budget Alerts</h3><p>✅ No alerts. You are within budget.</p>";
+            return;
         }
+
+        let html = "<h3>🚨 Budget Alerts</h3><ul>";
+
+        data.alerts.forEach(a => {
+            const cls = a.status === "exceeded" ? "exceeded" : "warning";
+            html += `
+                <li class="${cls}">
+                    ${a.category}: ₹${a.spent} / ₹${a.limit}
+                    (${a.percent}% – ${a.status.toUpperCase()})
+                </li>`;
+        });
 
         html += "</ul>";
         div.innerHTML = html;
     });
 </script>
+
+</body>
+</html>

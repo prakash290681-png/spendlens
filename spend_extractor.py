@@ -60,7 +60,7 @@ def normalize_date(date_str: str):
     try:
         return datetime.strptime(date_str[:25], "%a, %d %b %Y %H:%M:%S")
     except Exception:
-        return datetime.utcnow()
+        return None
 
 
 def extract_spend(email: dict):

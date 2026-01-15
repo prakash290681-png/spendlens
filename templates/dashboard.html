@@ -41,34 +41,59 @@
 
 <script>
 /* -------- SUMMARY -------- */
-@app.get("/summary/monthly")
-def monthly_summary(db: Session = Depends(get_db)):
-    month = datetime.now().month
-    year = datetime.now().year
+<script>
+async function loadSummary() {
+    const res = await fetch("/summary/monthly");
+    const data = await res.json();
 
-    rows = (
-        db.query(
-            Transaction.category,
-            func.sum(Transaction.amount).label("total")
-        )
-        .filter(
-            extract("month", Transaction.date) == month,
-            extract("year", Transaction.date) == year
-        )
-        .group_by(Transaction.category)
-        .all()
-    )
+    const div = document.getElementById("summary");
 
-    return {
-        "month": f"{month}-{year}",
-        "summary": [
-            {
-                "category": r.category,
-                "total": r.total
-            }
-            for r in rows
-        ]
+    if (!data.by_category || data.by_category.length === 0) {
+        div.innerHTML = "<p>No transactions for this month.</p>";
+        return;
     }
+
+    let html = "<h3>Category Summary</h3><ul>";
+    data.by_category.forEach(item => {
+        html += `<li><strong>${item.category}</strong>: ₹${item.total}</li>`;
+    });
+    html += "</ul>";
+
+    html += "<h3>Merchant Breakdown</h3><ul>";
+    data.by_merchant.forEach(item => {
+        html += `<li>${item.merchant}: ₹${item.total}</li>`;
+    });
+    html += "</ul>";
+
+    div.innerHTML = html;
+}
+
+async function loadAlerts() {
+    const res = await fetch("/alerts/monthly");
+    const data = await res.json();
+
+    const div = document.getElementById("alerts");
+
+    if (!data.alerts || data.alerts.length === 0) {
+        div.innerHTML = "✅ No alerts. You are within budget.";
+        return;
+    }
+
+    let html = "<ul>";
+    data.alerts.forEach(a => {
+        html += `<li>
+            <strong>${a.category}</strong>: ₹${a.spent} / ₹${a.limit}
+            (${a.percent}% – ${a.status})
+        </li>`;
+    });
+    html += "</ul>";
+
+    div.innerHTML = html;
+}
+
+loadSummary();
+loadAlerts();
+</script>
 
 /* -------- ALERTS -------- */
 fetch("/alerts/monthly")

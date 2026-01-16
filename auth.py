@@ -89,10 +89,10 @@ def callback(request: Request):
         print(">>> DUPLICATE SKIPPED:", spend["source_id"])
  
        20
-    # ✅ THESE MUST BE OUTSIDE THE LOOP
-    db.commit()
-    print("TOTAL INSERTED:", inserted)
-    db.close()
+# ✅ THESE MUST BE OUTSIDE THE LOOP
+db.commit()
+print("TOTAL INSERTED:", inserted)
+db.close()
 
-    return RedirectResponse(url="/dashboard")
+return RedirectResponse(url="/dashboard")
 

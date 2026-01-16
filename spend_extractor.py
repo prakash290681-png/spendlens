@@ -39,19 +39,20 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    # Strip HTML → plain text
-    soup = BeautifulSoup(text, "html.parser")
-    clean_text = soup.get_text(" ")
+    # Normalize whitespace
+    clean = " ".join(text.replace("\n", " ").split())
 
-    # ₹349 or Rs. 349
-    match = re.search(r"(₹|Rs\.?)\s*([0-9,]+)", clean_text)
-    if match:
-        return int(match.group(2).replace(",", ""))
+    patterns = [
+        r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        r"Grand\s*Total\s*[:\-]?\s*₹?\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        r"Item\s*Total\s*[:\-]?\s*₹?\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        r"Paid\s*₹?\s*([0-9]+(?:\.[0-9]{1,2})?)"
+    ]
 
-    # Swiggy fallback
-    match = re.search(r"Total\s+Paid\s*([0-9,]+)", clean_text, re.IGNORECASE)
-    if match:
-        return int(match.group(1).replace(",", ""))
+    for p in patterns:
+        m = re.search(p, clean, re.IGNORECASE)
+        if m:
+            return float(m.group(m.lastindex))
 
     return None
 

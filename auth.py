@@ -64,30 +64,30 @@ def callback(request: Request):
     db = SessionLocal()
     inserted = 0
 
-for spend in spends:
-    print("RAW SPEND:", spend)
+    for spend in spends:
+        print("RAW SPEND:", spend)
 
-    if spend["amount"] is None or spend["date"] is None:
-        print(">>> SKIP: invalid spend")
-        continue
+        if spend["amount"] is None or spend["date"] is None:
+            print(">>> SKIP: invalid spend")
+            continue
 
-    tx = Transaction(
-        merchant=spend["merchant"],
-        category=spend["category"],
-        amount=spend["amount"],
-        date=spend["date"],
-        source_id=spend["source_id"]
-    )
+        tx = Transaction(
+            merchant=spend["merchant"],
+            category=spend["category"],
+            amount=spend["amount"],
+            date=spend["date"],
+            source_id=spend["source_id"]
+        )
 
-    try:
-        db.add(tx)
-        db.commit()
-        inserted += 1
-        print(">>> INSERTED:", spend["source_id"])
-    except IntegrityError:
-        db.rollback()
+        try:
+            db.add(tx)
+            db.commit()
+            inserted += 1
+            print(">>> INSERTED:", spend["source_id"])
+        except IntegrityError:
+            db.rollback()
         print(">>> DUPLICATE SKIPPED:", spend["source_id"])
-
+ 
        20
     # ✅ THESE MUST BE OUTSIDE THE LOOP
     db.commit()

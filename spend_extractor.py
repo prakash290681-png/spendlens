@@ -39,20 +39,20 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    # Normalize whitespace
-    clean = " ".join(text.replace("\n", " ").split())
+    # remove HTML tags if present
+    clean = re.sub(r"<[^>]+>", " ", text)
+    clean = clean.replace(",", "")
 
     patterns = [
-        r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"Grand\s*Total\s*[:\-]?\s*₹?\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"Item\s*Total\s*[:\-]?\s*₹?\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"Paid\s*₹?\s*([0-9]+(?:\.[0-9]{1,2})?)"
+        r"(₹|Rs\.?)\s*([0-9]+(\.[0-9]{1,2})?)",
+        r"(total|grand total|amount paid|paid)\s*[:\-]?\s*₹?\s*([0-9]+(\.[0-9]{1,2})?)",
+        r"\b([0-9]+(\.[0-9]{1,2})?)\s*(INR|rs|₹)\b",
     ]
 
     for p in patterns:
         m = re.search(p, clean, re.IGNORECASE)
         if m:
-            return float(m.group(m.lastindex))
+            return float(m.group(len(m.groups())))
 
     return None
 

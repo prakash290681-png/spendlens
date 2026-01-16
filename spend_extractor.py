@@ -39,50 +39,21 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    # remove HTML tags if present
-    clean = re.sub(r"<[^>]+>", " ", text)
-    clean = clean.replace(",", "")
+    # Remove HTML if present
+    try:
+        from bs4 import BeautifulSoup
+        text = BeautifulSoup(text, "html.parser").get_text(" ")
+    except Exception:
+        pass
 
-    patterns = [
-        r"(₹|Rs\.?)\s*([0-9]+(\.[0-9]{1,2})?)",
-        r"(total|grand total|amount paid|paid)\s*[:\-]?\s*₹?\s*([0-9]+(\.[0-9]{1,2})?)",
-        r"\b([0-9]+(\.[0-9]{1,2})?)\s*(INR|rs|₹)\b",
-    ]
+    # ₹ 283.65 or Rs. 283 or 283.65
+    match = re.search(r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)", text)
+    if match:
+        return float(match.group(2))
 
-    for p in patterns:
-        m = re.search(p, clean, re.IGNORECASE)
-        if m:
-            return float(m.group(len(m.groups())))
+    # Swiggy-style fallback: "Total Paid 254"
+    match = re.search(r"Total\s+(Paid|Amount)\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)", text, re.IGNORECASE)
+    if match:
+        return float(match.group(2))
 
     return None
-
-
-def normalize_date(date_str: str):
-    try:
-        return datetime.strptime(date_str[:25], "%a, %d %b %Y %H:%M:%S")
-    except Exception:
-        return None
-
-
-def extract_spend(email: dict):
-    print(">>> EXTRACT_SPEND SUBJECT:", email.get("Subject"))
-
-    sender = email.get("From", "")
-    subject = email.get("Subject", "")
-    body = email.get("Body", "")
-    date = email.get("Date", "")
-
-    merchant = detect_merchant(sender)
-    category = detect_category(merchant)
-    amount = extract_amount(body) or extract_amount(subject)
-
-    spend = {
-        "merchant": merchant,
-        "category": category,
-        "amount": amount,
-        "date": normalize_date(date),
-	"source_id": email.get("source_id")
-    }
-
-    print(">>> EXTRACT_SPEND RESULT:", spend)
-    return spend

@@ -1,19 +1,20 @@
-# spend_extractor.py
-from bs4 import BeautifulSoup
 import re
 from datetime import datetime
+from bs4 import BeautifulSoup
 
+# -----------------------------
+# Merchant → Category mapping
+# -----------------------------
 MERCHANT_CATEGORY_MAP = {
-    "swiggy": "Food Delivery",
     "zomato": "Food Delivery",
-    "blinkit": "Grocery",
-    "instamart": "Grocery",
-    "zepto": "Grocery",
+    "swiggy": "Food Delivery",
+    "instamart": "Food Delivery",
     "amazon": "Shopping",
-    "homeshop18": "Shopping",
 }
 
-
+# -----------------------------
+# Merchant detection
+# -----------------------------
 def detect_merchant(sender: str) -> str:
     s = sender.lower()
 
@@ -21,10 +22,10 @@ def detect_merchant(sender: str) -> str:
         return "Zomato"
     if "swiggy" in s:
         return "Swiggy"
+    if "instamart" in s:
+        return "Instamart"
     if "amazon" in s:
         return "Amazon"
-    if "homeshop18" in s:
-        return "HomeShop18"
 
     return "Unknown"
 
@@ -35,25 +36,68 @@ def detect_category(merchant: str) -> str:
     return MERCHANT_CATEGORY_MAP.get(merchant.lower(), "Other")
 
 
+# -----------------------------
+# Amount extraction (SAFE)
+# -----------------------------
 def extract_amount(text: str):
     if not text:
         return None
 
-    # Remove HTML if present
+    # Strip HTML safely
     try:
-        from bs4 import BeautifulSoup
         text = BeautifulSoup(text, "html.parser").get_text(" ")
     except Exception:
         pass
 
-    # ₹ 283.65 or Rs. 283 or 283.65
+    # ₹ 283.65 / Rs. 283 / 283.00
     match = re.search(r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)", text)
     if match:
         return float(match.group(2))
 
-    # Swiggy-style fallback: "Total Paid 254"
-    match = re.search(r"Total\s+(Paid|Amount)\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)", text, re.IGNORECASE)
+    # Swiggy fallback: "Total Paid 254"
+    match = re.search(
+        r"Total\s+(Paid|Amount)\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        text,
+        re.IGNORECASE,
+    )
     if match:
         return float(match.group(2))
 
     return None
+
+
+# -----------------------------
+# Date normalization
+# -----------------------------
+def normalize_date(date_str: str):
+    try:
+        return datetime.strptime(date_str[:25], "%a, %d %b %Y %H:%M:%S")
+    except Exception:
+        return datetime.utcnow()
+
+
+# -----------------------------
+# MAIN ENTRY (THIS WAS MISSING)
+# -----------------------------
+def extract_spend(email: dict):
+    sender = email.get("From", "")
+    subject = email.get("Subject", "")
+    body = email.get("Body", "")
+    date_str = email.get("Date", "")
+    source_id = email.get("id") or email.get("Message-Id")
+
+    merchant = detect_merchant(sender)
+    category = detect_category(merchant)
+    amount = extract_amount(body) or extract_amount(subject)
+    date = normalize_date(date_str)
+
+    spend = {
+        "merchant": merchant,
+        "category": category,
+        "amount": amount,
+        "date": date,
+        "source_id": source_id,
+    }
+
+    print(">>> EXTRACT_SPEND RESULT:", spend)
+    return spend

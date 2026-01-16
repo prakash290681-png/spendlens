@@ -47,9 +47,11 @@ def login():
     return RedirectResponse(auth_url)
 
 
+from sqlalchemy.exc import IntegrityError
+
 @router.get("/auth/callback")
 def callback(request: Request):
-    print(">>> AUTH LOGIN HIT <<<")
+    print(">>> AUTH CALLBACK HIT <<<")
 
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
@@ -67,7 +69,7 @@ def callback(request: Request):
     for spend in spends:
         print("RAW SPEND:", spend)
 
-        if spend["amount"] is None or spend["date"] is None:
+        if spend.get("amount") is None or spend.get("date") is None:
             print(">>> SKIP: invalid spend")
             continue
 
@@ -86,13 +88,9 @@ def callback(request: Request):
             print(">>> INSERTED:", spend["source_id"])
         except IntegrityError:
             db.rollback()
-        print(">>> DUPLICATE SKIPPED:", spend["source_id"])
- 
-       20
-# ✅ THESE MUST BE OUTSIDE THE LOOP
-db.commit()
-print("TOTAL INSERTED:", inserted)
-db.close()
+            print(">>> DUPLICATE SKIPPED:", spend["source_id"])
 
-return RedirectResponse(url="/dashboard")
+    print("TOTAL INSERTED:", inserted)
+    db.close()
 
+    return RedirectResponse(url="/dashboard")

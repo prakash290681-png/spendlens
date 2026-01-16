@@ -83,7 +83,17 @@ def extract_spend(email: dict):
 
     merchant = detect_merchant(sender)
     category = detect_category(merchant)
+
     amount = extract_amount(body) or extract_amount(subject)
+
+    # 🔍 TEMP DEBUG — Swiggy only
+    if merchant == "Swiggy":
+        print("==== SWIGGY SUBJECT ====")
+        print(subject)
+        print("==== SWIGGY BODY SAMPLE ====")
+        print(body[:1500])
+        print("==== END SWIGGY BODY ====")
+
     date = normalize_date(date_str)
 
     spend = {

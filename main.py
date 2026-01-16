@@ -56,13 +56,25 @@ def dashboard(request: Request):
         "dashboard.html",
         {"request": request}
     )
-
 @app.get("/summary/monthly")
 def monthly_summary(db: Session = Depends(get_db)):
     print(">>> SUMMARY ENDPOINT HIT <<<")
 
     month = datetime.now().month
     year = datetime.now().year
+
+    # 🔍 TEMP DEBUG — last 10 transactions
+    rows = (
+        db.query(
+            Transaction.merchant,
+            Transaction.amount,
+            Transaction.date
+        )
+        .order_by(Transaction.date.desc())
+        .limit(10)
+        .all()
+    )
+    print("LAST 10 TX:", rows)
 
     # 1️⃣ Merchant-wise breakdown
     merchant_rows = (

@@ -46,8 +46,8 @@ def login():
     )
     return RedirectResponse(auth_url)
 
-
 from sqlalchemy.exc import IntegrityError
+# ↑ ADD THIS IMPORT
 
 @router.get("/auth/callback")
 def callback(request: Request):
@@ -55,7 +55,6 @@ def callback(request: Request):
 
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
-
     flow.fetch_token(authorization_response=str(request.url))
     creds = flow.credentials
 

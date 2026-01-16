@@ -43,20 +43,23 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    # Normalize
-    t = text.replace(",", "").lower()
+    # Normalize HTML junk
+    text = text.replace("&nbsp;", " ")
+    text = text.replace("\u20b9", "₹")  # ₹ symbol
+    text = re.sub(r"\s+", " ", text)
 
+    # 1️⃣ Common patterns
     patterns = [
-        r"(?:₹|rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"total\s*paid\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"grand\s*total\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"amount\s*paid\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)"
+        r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        r"Total\s+Paid\s*(₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        r"Grand\s+Total\s*(₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        r"Order\s+Total\s*(₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)",
     ]
 
     for p in patterns:
-        m = re.search(p, t, re.IGNORECASE)
+        m = re.search(p, text, re.IGNORECASE)
         if m:
-            return float(m.group(1))
+            return float(m.group(m.lastindex))
 
     return None
 
@@ -87,12 +90,9 @@ def extract_spend(email: dict):
     amount = extract_amount(body) or extract_amount(subject)
 
     # 🔍 TEMP DEBUG — Swiggy only
-    if merchant == "Swiggy":
-        print("==== SWIGGY SUBJECT ====")
-        print(subject)
-        print("==== SWIGGY BODY SAMPLE ====")
-        print(body[:1500])
-        print("==== END SWIGGY BODY ====")
+    if merchant == "Swiggy" and amount is None:
+        print("SWIGGY No Amount found ")
+        print(body[:2000])
 
     date = normalize_date(date_str)
 

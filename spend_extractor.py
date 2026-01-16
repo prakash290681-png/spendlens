@@ -43,28 +43,25 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    # Strip HTML safely
-    try:
-        text = BeautifulSoup(text, "html.parser").get_text(" ")
-    except Exception:
-        pass
+    # normalize spaces
+    text = text.replace("\n", " ").replace("\r", " ")
 
-    # ₹ 283.65 / Rs. 283 / 283.00
-    match = re.search(r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)", text)
-    if match:
-        return float(match.group(2))
+    # 1️⃣ ₹123 or Rs. 123
+    m = re.search(r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)", text)
+    if m:
+        return float(m.group(2))
 
-    # Swiggy fallback: "Total Paid 254"
-    match = re.search(
-        r"Total\s+(Paid|Amount)\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        text,
-        re.IGNORECASE,
-    )
-    if match:
-        return float(match.group(2))
+    # 2️⃣ Swiggy-style: "Total Paid 155" or "Total Paid: 155.00"
+    m = re.search(r"Total\s+Paid[:\s]*([0-9]+(?:\.[0-9]{1,2})?)", text, re.I)
+    if m:
+        return float(m.group(1))
+
+    # 3️⃣ Swiggy fallback: "Grand Total 204"
+    m = re.search(r"Grand\s+Total[:\s]*([0-9]+(?:\.[0-9]{1,2})?)", text, re.I)
+    if m:
+        return float(m.group(1))
 
     return None
-
 
 # -----------------------------
 # Date normalization

@@ -69,7 +69,7 @@ def fetch_recent_emails(access_token: str, max_results=50):
 
         headers = msg_data["payload"]["headers"]
         email = {h["name"]: h["value"] for h in headers}
-        email["source_id"] = msg["id"]
+        email["id"] = msg["id"]
 
         body = extract_body(msg_data["payload"])
         email["Body"] = body

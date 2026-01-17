@@ -23,28 +23,37 @@ def extract_body(payload):
     return ""
 
 
+# ✅ NEW: attachment extractor
+def extract_attachments(payload):
+    attachments = []
+
+    if "parts" not in payload:
+        return attachments
+
+    for part in payload["parts"]:
+        filename = part.get("filename")
+        body = part.get("body", {})
+
+        if filename and filename.lower().endswith(".pdf"):
+            attachment_id = body.get("attachmentId")
+            if attachment_id:
+                attachments.append({
+                    "filename": filename,
+                    "attachmentId": attachment_id,
+                    "mimeType": part.get("mimeType"),
+                })
+
+    return attachments
+
 
 def fetch_recent_emails(access_token: str, max_results=50):
     print(">>> fetch_recent_emails() CALLED <<<")
 
-    # ---- current month range ----
-    now = datetime.now()
-    start_of_month = datetime(now.year, now.month, 1)
-
-    if now.month == 12:
-        end_of_month = datetime(now.year + 1, 1, 1)
-    else:
-        end_of_month = datetime(now.year, now.month + 1, 1)
-
-    after_ts = gmail_timestamp(start_of_month)
-    before_ts = gmail_timestamp(end_of_month)
-
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
 
-    # ---- FINAL, CORRECT QUERY ----
     final_query = (
-    '(subject:"Your Zomato order" OR subject:"Your Swiggy order")'
+        '(subject:"Your Zomato order" OR subject:"Your Swiggy order")'
     )
 
     results = service.users().messages().list(
@@ -71,11 +80,14 @@ def fetch_recent_emails(access_token: str, max_results=50):
         email = {h["name"]: h["value"] for h in headers}
         email["id"] = msg["id"]
 
-        body = extract_body(msg_data["payload"])
-        email["Body"] = body
+        email["Body"] = extract_body(msg_data["payload"])
+
+        # ✅ THIS IS THE KEY FIX
+        email["Attachments"] = extract_attachments(msg_data["payload"])
 
         print("MERCHANT EMAIL FROM:", email.get("From"))
         print("MERCHANT EMAIL SUBJECT:", email.get("Subject"))
+        print("ATTACHMENTS:", email["Attachments"])
         print("-----")
 
         emails.append(email)

@@ -58,9 +58,9 @@ def callback(request: Request):
     flow.fetch_token(authorization_response=str(request.url))
     creds = flow.credentials
 
-    emails = fetch_recent_emails(creds.token, max_results=30)
+    emails, service = fetch_recent_emails(creds.token, return_service=True)
     order_emails = [e for e in emails if is_order_email(e)]
-    spends = [extract_spend(email) for email in order_emails]
+    spends = [extract_spend(email, service) for email in emails]
 
     db = SessionLocal()
     inserted = 0

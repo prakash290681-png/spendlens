@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from pdf_utils import extract_amount_from_pdf
 from bs4 import BeautifulSoup
 
 # -----------------------------
@@ -75,10 +76,11 @@ def normalize_date(date_str: str):
 # -----------------------------
 # MAIN ENTRY (THIS WAS MISSING)
 # -----------------------------
-def extract_spend(email: dict):
+def extract_spend(email: dict, gmail_service=None):
     sender = email.get("From", "")
     subject = email.get("Subject", "")
     body = email.get("Body", "")
+    attachments = email.get("Attachments", [])
     date_str = email.get("Date", "")
     source_id = email.get("id") or email.get("Message-Id")
 
@@ -87,14 +89,19 @@ def extract_spend(email: dict):
 
     amount = extract_amount(body) or extract_amount(subject)
 
-    # 🔍 TEMP DEBUG — Swiggy only
-    if merchant == "Swiggy" and amount is None:
-        print("SWIGGY No Amount found ")
-        print(body[:2000])
+    # fallback to PDF attachment parsing if amount not found
+    if amount is None and merchant == "Swiggy" and attachments and gmail_service:
+        for a in attachments:
+            pdf_bytes = download_attachment(
+                gmail_service, source_id, a["attachmentId"]
+            )
+            amount = extract_amount_from_pdf(pdf_bytes)
+            if amount:
+                break
 
-    date = normalize_date(date_str)
+    date = normalize_date(email.get("Date"))
 
-    spend = {
+    return {
         "merchant": merchant,
         "category": category,
         "amount": amount,

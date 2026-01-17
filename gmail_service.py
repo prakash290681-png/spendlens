@@ -45,6 +45,16 @@ def extract_attachments(payload):
 
     return attachments
 
+def download_attachment(service, message_id, attachment_id):
+    attachment = service.users().messages().attachments().get(
+        userId="me",
+        messageId=message_id,
+        id=attachment_id
+    ).execute()
+
+    data = attachment["data"]
+    return base64.urlsafe_b64decode(data)
+
 
 def fetch_recent_emails(access_token: str, max_results=50):
     print(">>> fetch_recent_emails() CALLED <<<")

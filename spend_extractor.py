@@ -43,23 +43,39 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    # Normalize HTML junk
+    # ---- NORMALIZE ----
+    # Convert HTML entities
     text = text.replace("&nbsp;", " ")
-    text = text.replace("\u20b9", "₹")  # ₹ symbol
+
+    # Normalize rupee symbol variants
+    text = text.replace("\u20b9", "₹")   # normal rupee
+    text = text.replace("&#8377;", "₹")  # html entity
+
+    # Normalize weird spaces (THIS IS THE KEY)
+    text = text.replace("\xa0", " ")
+    text = text.replace("\u202f", " ")
+
+    # Collapse whitespace
     text = re.sub(r"\s+", " ", text)
 
-    # 1️⃣ Common patterns
     patterns = [
-        r"(₹|Rs\.?)\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"Total\s+Paid\s*(₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"Grand\s+Total\s*(₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)",
-        r"Order\s+Total\s*(₹)?\s*([0-9]+(?:\.[0-9]{1,2})?)",
+        # ₹204 / ₹ 204 / ₹204.50
+        r"₹\s*([0-9]+(?:\.[0-9]{1,2})?)",
+
+        # Order Total ₹204
+        r"Order\s+Total\s+₹\s*([0-9]+(?:\.[0-9]{1,2})?)",
+
+        # Grand Total ₹204
+        r"Grand\s+Total\s+₹\s*([0-9]+(?:\.[0-9]{1,2})?)",
+
+        # Total Paid ₹204
+        r"Total\s+Paid\s+₹\s*([0-9]+(?:\.[0-9]{1,2})?)",
     ]
 
     for p in patterns:
         m = re.search(p, text, re.IGNORECASE)
         if m:
-            return float(m.group(m.lastindex))
+            return float(m.group(1))
 
     return None
 

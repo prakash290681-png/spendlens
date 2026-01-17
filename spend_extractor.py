@@ -20,7 +20,7 @@ def detect_merchant(sender: str) -> str:
 
     if "zomato" in s:
         return "Zomato"
-    if "swiggy" in s:
+    if "swiggy" in s or "@swiggy" in s or "noreply@swiggy" in s:
         return "Swiggy"
     if "instamart" in s:
         return "Instamart"

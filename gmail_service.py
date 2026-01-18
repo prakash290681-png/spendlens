@@ -23,28 +23,21 @@ def extract_body(payload):
     return ""
 
 
-# ✅ NEW: attachment extractor
+# ✅ NEW: attachment extraction
 def extract_attachments(payload):
     attachments = []
-
     if "parts" not in payload:
         return attachments
-
+    
     for part in payload["parts"]:
-        filename = part.get("filename")
-        body = part.get("body", {})
-
-        if filename and filename.lower().endswith(".pdf"):
-            attachment_id = body.get("attachmentId")
-            if attachment_id:
-                attachments.append({
-                    "filename": filename,
-                    "attachmentId": attachment_id,
-                    "mimeType": part.get("mimeType"),
-                })
-
+        if part.get("filename") and part.get("body", {}.get("attachmentId"):
+            attachments.append({
+                "filename": part["filename"],
+                "mimeType": part["mimeType"],
+                "attachmentId": part["body"]["attachmentId"]
+            })
     return attachments
-
+    
 def download_attachment(service, message_id, attachment_id):
     attachment = service.users().messages().attachments().get(
         userId="me",

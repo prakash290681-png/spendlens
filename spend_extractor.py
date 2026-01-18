@@ -76,7 +76,7 @@ def normalize_date(date_str: str):
 # -----------------------------
 # MAIN ENTRY (THIS WAS MISSING)
 # -----------------------------
-def extract_spend(email: dict, gmail_service=None):
+def extract_spend(email: dict):
     sender = email.get("From", "")
     subject = email.get("Subject", "")
     body = email.get("Body", "")
@@ -90,16 +90,16 @@ def extract_spend(email: dict, gmail_service=None):
     amount = extract_amount(body) or extract_amount(subject)
 
     # fallback to PDF attachment parsing if amount not found
-    if amount is None and merchant == "Swiggy" and attachments and gmail_service:
-        for a in attachments:
-            pdf_bytes = download_attachment(
-                gmail_service, source_id, a["attachmentId"]
-            )
-            amount = extract_amount_from_pdf(pdf_bytes)
-            if amount:
-                break
-
-    date = normalize_date(email.get("Date"))
+    if amount is None and merchant == "Swiggy"
+        print(">>> TRYING PDF ATTACHMENT PARSING FOR AMOUNT <<<")
+        for att in attachments:
+            if att["mimeType"] == "application/pdf":
+                amount = extract_amount_from_pdf(att[attachments])
+                if amount:
+                    print (">>>Swiggy amount from PDF:", amount)
+                    break
+            
+    date = normalize_date(date_str)
 
     return {
         "merchant": merchant,

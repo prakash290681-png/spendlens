@@ -26,16 +26,20 @@ def extract_body(payload):
 # ✅ NEW: attachment extraction
 def extract_attachments(payload):
     attachments = []
+
     if "parts" not in payload:
         return attachments
-    
+
     for part in payload["parts"]:
-        if part.get("filename") and part.get("body", {}.get("attachmentId"):
+        body = part.get("body", {})
+
+        if part.get("filename") and body.get("attachmentId"):
             attachments.append({
                 "filename": part["filename"],
-                "mimeType": part["mimeType"],
-                "attachmentId": part["body"]["attachmentId"]
+                "attachmentId": body["attachmentId"],
+                "mimeType": part.get("mimeType"),
             })
+
     return attachments
     
 def download_attachment(service, message_id, attachment_id):

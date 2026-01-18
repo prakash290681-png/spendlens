@@ -44,7 +44,11 @@ def callback(request: Request):
     flow.fetch_token(authorization_response=str(request.url))
     creds = flow.credentials
 
-    emails, service = fetch_recent_emails(creds.token, return_service=True)
+    # ✅ THIS IS THE CRITICAL LINE
+    emails, service = fetch_recent_emails(
+        creds.token,
+        return_service=True
+    )
 
     db = SessionLocal()
     inserted = 0
@@ -62,7 +66,8 @@ def callback(request: Request):
             db.add(tx)
             db.commit()
             inserted += 1
-        except Exception:
+        except Exception as e:
+            print("DB ERROR:", e)
             db.rollback()
 
     db.close()

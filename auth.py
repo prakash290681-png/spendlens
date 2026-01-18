@@ -68,9 +68,10 @@ def callback(request: Request):
     for spend in spends:
         print("RAW SPEND:", spend)
 
-        if spend.get("amount") is None or spend.get("date") is None:
-            print(">>> SKIP: invalid spend")
+        if not spend or spend.get("amount") is None or spend.get("date") is None:
+            print(">>> SKIP: invalid spend", spend)
             continue
+
 
         tx = Transaction(
             merchant=spend["merchant"],

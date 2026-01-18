@@ -12,7 +12,7 @@ def gmail_timestamp(dt: datetime) -> int:
 def extract_body(payload):
     if "parts" in payload:
         for part in payload["parts"]:
-            if part["mimeType"] == "text/html" and "data" in part["body"]:
+            if part.get("mimeType") == "text/html" and "data" in part.get("body", {}):
                 return base64.urlsafe_b64decode(
                     part["body"]["data"]
                 ).decode("utf-8", errors="ignore")
@@ -23,7 +23,6 @@ def extract_body(payload):
     return ""
 
 
-# ✅ NEW: attachment extraction
 def extract_attachments(payload):
     attachments = []
 
@@ -31,47 +30,29 @@ def extract_attachments(payload):
         return attachments
 
     for part in payload["parts"]:
-        body = part.get("body", {})
-
-        if part.get("filename") and body.get("attachmentId"):
+        if part.get("filename") and part.get("body", {}).get("attachmentId"):
             attachments.append({
                 "filename": part["filename"],
-                "attachmentId": body["attachmentId"],
+                "attachmentId": part["body"]["attachmentId"],
                 "mimeType": part.get("mimeType"),
             })
 
     return attachments
-    
-def download_attachment(service, message_id, attachment_id):
-    attachment = service.users().messages().attachments().get(
-        userId="me",
-        messageId=message_id,
-        id=attachment_id
-    ).execute()
-
-    data = attachment["data"]
-    return base64.urlsafe_b64decode(data)
 
 
-def fetch_recent_emails(access_token: str, max_results=50):
+def fetch_recent_emails(access_token: str, return_service=False):
     print(">>> fetch_recent_emails() CALLED <<<")
 
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
 
-    final_query = (
-        '(subject:"Your Zomato order" OR subject:"Your Swiggy order")'
-    )
+    query = '(subject:"Zomato" OR subject:"Swiggy")'
 
     results = service.users().messages().list(
         userId="me",
-        q=final_query,
-        maxResults=500
+        q=query,
+        maxResults=200
     ).execute()
-
-    print(">>> RAW GMAIL RESULTS:", results)
-    print(">>> GMAIL MERCHANT MESSAGE COUNT:",
-          len(results.get("messages", [])))
 
     messages = results.get("messages", [])
     emails = []
@@ -85,18 +66,14 @@ def fetch_recent_emails(access_token: str, max_results=50):
 
         headers = msg_data["payload"]["headers"]
         email = {h["name"]: h["value"] for h in headers}
+
         email["id"] = msg["id"]
-
         email["Body"] = extract_body(msg_data["payload"])
-
-        # ✅ THIS IS THE KEY FIX
-        email["Attachments"] = extract_attachments(msg_data["payload"])
-
-        print("MERCHANT EMAIL FROM:", email.get("From"))
-        print("MERCHANT EMAIL SUBJECT:", email.get("Subject"))
-        print("ATTACHMENTS:", email["Attachments"])
-        print("-----")
+        email["attachments"] = extract_attachments(msg_data["payload"])
 
         emails.append(email)
+
+    if return_service:
+        return emails, service
 
     return emails

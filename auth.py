@@ -1,21 +1,16 @@
-import os
-from datetime import datetime
-
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
+import os
 
 from gmail_service import fetch_recent_emails
-from email_filter import is_order_email
 from spend_extractor import extract_spend
 from database import SessionLocal
 from models import Transaction
 
 router = APIRouter()
 
-# Allow HTTP for local dev only
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
 
@@ -36,61 +31,41 @@ def create_flow():
 
 @router.get("/auth/login")
 def login():
-    print(">>> AUTH LOGIN HIT <<<")
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
-
-    auth_url, _ = flow.authorization_url(
-        access_type="offline",
-        prompt="consent",
-    )
+    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
     return RedirectResponse(auth_url)
 
-from sqlalchemy.exc import IntegrityError
-# ↑ ADD THIS IMPORT
 
 @router.get("/auth/callback")
 def callback(request: Request):
-    print(">>> AUTH CALLBACK HIT <<<")
-
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     flow.fetch_token(authorization_response=str(request.url))
     creds = flow.credentials
-    emails = fetch_recent_emails(creds.token)
 
-    order_emails = [e for e in emails if is_order_email(e)]
-    spends = [extract_spend(email, service) for email in emails]
+    emails, service = fetch_recent_emails(creds.token, return_service=True)
 
     db = SessionLocal()
     inserted = 0
 
-    for spend in spends:
-        print("RAW SPEND:", spend)
+    for email in emails:
+        spend = extract_spend(email, service)
 
-        if not spend or spend.get("amount") is None or spend.get("date") is None:
-            print(">>> SKIP: invalid spend", spend)
+        if spend["amount"] is None or spend["date"] is None:
+            print(">>> SKIP INVALID SPEND")
             continue
 
-
-        tx = Transaction(
-            merchant=spend["merchant"],
-            category=spend["category"],
-            amount=spend["amount"],
-            date=spend["date"],
-            source_id=spend["source_id"]
-        )
+        tx = Transaction(**spend)
 
         try:
             db.add(tx)
             db.commit()
             inserted += 1
-            print(">>> INSERTED:", spend["source_id"])
-        except IntegrityError:
+        except Exception:
             db.rollback()
-            print(">>> DUPLICATE SKIPPED:", spend["source_id"])
 
-    print("TOTAL INSERTED:", inserted)
     db.close()
+    print("TOTAL INSERTED:", inserted)
 
-    return RedirectResponse(url="/dashboard")
+    return RedirectResponse("/dashboard")

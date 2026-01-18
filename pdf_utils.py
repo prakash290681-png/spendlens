@@ -1,22 +1,32 @@
 import base64
-import io
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-from pdfminer.high_level import extract_text
 import re
+import io
+from PyPDF2 import PdfReader
 
-def extract_amount_from_pdf(attachment_id, service):
-    att = service.users().messages().attachments().get(
-        userId="me",
-        messageId="me",
-        id=attachment_id
-    ).execute()
 
-    data = base64.urlsafe_b64decode(att["data"])
-    text = extract_text(io.BytesIO(data))
+def extract_amount_from_pdf(email: dict, service):
+    attachments = email.get("attachments", [])
 
-    match = re.search(r'₹\s?([\d,]+\.?\d*)', text)
-    if match:
-        return float(match.group(1).replace(",", ""))
+    for att in attachments:
+        if att["mimeType"] != "application/pdf":
+            continue
+
+        att_data = service.users().messages().attachments().get(
+            userId="me",
+            messageId=email["id"],
+            id=att["attachmentId"]
+        ).execute()
+
+        pdf_bytes = base64.urlsafe_b64decode(att_data["data"])
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
+
+        # ₹ symbol + number OR Rs
+        match = re.search(r"(₹|Rs\.?)\s?(\d+(\.\d{1,2})?)", text)
+        if match:
+            return float(match.group(2))
 
     return None

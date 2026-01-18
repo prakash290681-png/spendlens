@@ -60,7 +60,7 @@ def callback(request: Request):
     emails = fetch_recent_emails(creds.token)
 
     order_emails = [e for e in emails if is_order_email(e)]
-    spends = [extract_spend(email) for email in emails]
+    spends = [extract_spend(email, service) for email in emails]
 
     db = SessionLocal()
     inserted = 0

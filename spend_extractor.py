@@ -90,7 +90,10 @@ def extract_spend(email: dict):
     amount = extract_amount(body) or extract_amount(subject)
 
     # fallback to PDF attachment parsing if amount not found
-    if amount is None and merchant == "Swiggy"
+    if amount is None and merchant == "Swiggy":
+        print(">>> TRYING PDF FALLBACK FOR SWIGGY")
+        amount = extract_amount_from_pdf(email)
+
         print(">>> TRYING PDF ATTACHMENT PARSING FOR AMOUNT <<<")
         for att in attachments:
             if att["mimeType"] == "application/pdf":

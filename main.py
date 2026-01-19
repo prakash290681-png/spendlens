@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from models import Budget
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -56,25 +55,21 @@ def dashboard(request: Request):
         "dashboard.html",
         {"request": request}
     )
+
+
+# ---------- SUMMARY ----------
 @app.get("/summary/monthly")
-def monthly_summary(db: Session = Depends(get_db)):
+def monthly_summary(
+    month: int | None = None,
+    year: int | None = None,
+    db: Session = Depends(get_db)
+):
+    now = datetime.now()
+    target_month = month or now.month
+    target_year = year or now.year
+
     print(">>> SUMMARY ENDPOINT HIT <<<")
-
-    month = datetime.now().month
-    year = datetime.now().year
-
-    # 🔍 TEMP DEBUG — last 10 transactions
-    rows = (
-        db.query(
-            Transaction.merchant,
-            Transaction.amount,
-            Transaction.date
-        )
-        .order_by(Transaction.date.desc())
-        .limit(10)
-        .all()
-    )
-    print("LAST 10 TX:", rows)
+    print("TARGET:", target_month, target_year)
 
     # 1️⃣ Merchant-wise breakdown
     merchant_rows = (
@@ -84,8 +79,8 @@ def monthly_summary(db: Session = Depends(get_db)):
             func.sum(Transaction.amount).label("total")
         )
         .filter(
-            extract("month", Transaction.date) == month,
-            extract("year", Transaction.date) == year
+            extract("month", Transaction.date) == target_month,
+            extract("year", Transaction.date) == target_year
         )
         .group_by(
             Transaction.merchant,
@@ -101,15 +96,15 @@ def monthly_summary(db: Session = Depends(get_db)):
             func.sum(Transaction.amount).label("total")
         )
         .filter(
-            extract("month", Transaction.date) == month,
-            extract("year", Transaction.date) == year
+            extract("month", Transaction.date) == target_month,
+            extract("year", Transaction.date) == target_year
         )
         .group_by(Transaction.category)
         .all()
     )
 
     return {
-        "month": f"{month}-{year}",
+        "month": f"{target_month}-{target_year}",
         "by_merchant": [
             {
                 "merchant": r.merchant,
@@ -127,6 +122,8 @@ def monthly_summary(db: Session = Depends(get_db)):
         ]
     }
 
+
+# ---------- BUDGET ----------
 @app.post("/budget")
 def set_budget(budget: BudgetIn, db: Session = Depends(get_db)):
     existing = (
@@ -159,66 +156,4 @@ def get_budgets(db: Session = Depends(get_db)):
     return [
         {
             "category": b.category,
-            "monthly_limit": b.monthly_limit
-        }
-        for b in budgets
-    ]
-
-from models import Budget
-
-@app.get("/alerts/monthly")
-def monthly_alerts(db: Session = Depends(get_db)):
-    month = datetime.now().month
-    year = datetime.now().year
-
-    # 1️⃣ Total spend per category (current month)
-    spends = (
-        db.query(
-            Transaction.category,
-            func.sum(Transaction.amount).label("total")
-        )
-        .filter(
-            extract("month", Transaction.date) == month,
-            extract("year", Transaction.date) == year
-        )
-        .group_by(Transaction.category)
-        .all()
-    )
-
-    spend_map = {s.category: s.total for s in spends}
-
-    # 2️⃣ Budgets
-    budgets = db.query(Budget).all()
-
-    alerts = []
-
-    for b in budgets:
-        spent = spend_map.get(b.category, 0)
-        limit = b.monthly_limit
-
-        # ⛔ skip invalid budgets safely
-        if limit is None or limit <= 0:
-            continue
-
-        percent = int((spent / limit) * 100)
-
-        if percent >= 100:
-            status = "exceeded"
-        elif percent >= 80:
-            status = "warning"
-        else:
-            continue  # no alert if below 80%
-
-        alerts.append({
-            "category": b.category,
-            "spent": spent,
-            "limit": limit,
-            "remaining": max(limit - spent, 0),
-            "percent": percent,
-            "status": status
-        })
-
-    return {
-        "month": f"{month}-{year}",
-        "alerts": alerts
-    }
+            "monthly

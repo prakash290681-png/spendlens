@@ -33,7 +33,6 @@ def extract_spend(email: dict, service):
         print(">>> TRYING SWIGGY PDF FALLBACK")
         amount = extract_amount_from_pdf(email, service)
         print(">>> SWIGGY PDF AMOUNT:", amount)
-        print("PDF TEXT SAMPLE:", text[:500])
         print("PDF TEXT LENGTH:", len(text))
 
 

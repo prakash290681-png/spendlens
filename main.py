@@ -153,7 +153,10 @@ def set_budget(budget: BudgetIn, db: Session = Depends(get_db)):
 def get_budgets(db: Session = Depends(get_db)):
     budgets = db.query(Budget).all()
 
-    return [
-        {
-            "category": b.category,
-            "monthly
+    return {
+        "month": f"{month}-{year}",
+        "alerts": alerts
+    }
+
+
+    

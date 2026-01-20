@@ -43,12 +43,13 @@ class BudgetIn(BaseModel):
     monthly_limit: int
 
 
-# ---------- Routes ----------
+# ---------- Health ----------
 @app.get("/")
 def health():
-    return {"status": "SpendLens backend running v999"}
+    return {"status": "SpendLens backend running"}
 
 
+# ---------- Dashboard ----------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse(
@@ -57,7 +58,7 @@ def dashboard(request: Request):
     )
 
 
-# ---------- SUMMARY ----------
+# ---------- MONTHLY SUMMARY ----------
 @app.get("/summary/monthly")
 def monthly_summary(
     month: int | None = None,
@@ -65,13 +66,10 @@ def monthly_summary(
     db: Session = Depends(get_db)
 ):
     now = datetime.now()
-    target_month = month or now.month
-    target_year = year or now.year
+    target_month = month if month is not None else now.month
+    target_year = year if year is not None else now.year
 
-    print(">>> SUMMARY ENDPOINT HIT <<<")
-    print("TARGET:", target_month, target_year)
-
-    # 1️⃣ Merchant-wise breakdown
+    # Merchant-wise totals
     merchant_rows = (
         db.query(
             Transaction.merchant,
@@ -89,7 +87,7 @@ def monthly_summary(
         .all()
     )
 
-    # 2️⃣ Category totals
+    # Category totals
     category_rows = (
         db.query(
             Transaction.category,
@@ -109,14 +107,14 @@ def monthly_summary(
             {
                 "merchant": r.merchant,
                 "category": r.category,
-                "total": r.total
+                "total": float(r.total)
             }
             for r in merchant_rows
         ],
         "by_category": [
             {
                 "category": r.category,
-                "total": r.total
+                "total": float(r.total)
             }
             for r in category_rows
         ]
@@ -152,11 +150,10 @@ def set_budget(budget: BudgetIn, db: Session = Depends(get_db)):
 @app.get("/budget")
 def get_budgets(db: Session = Depends(get_db)):
     budgets = db.query(Budget).all()
-
-    return {
-        "month": f"{month}-{year}",
-        "alerts": alerts
-    }
-
-
-    
+    return [
+        {
+            "category": b.category,
+            "monthly_limit": b.monthly_limit
+        }
+        for b in budgets
+    ]

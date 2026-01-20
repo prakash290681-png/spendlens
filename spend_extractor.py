@@ -9,12 +9,21 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    # ₹ 204.50 OR Rs 204.50
-    match = re.search(r"(₹|Rs\.?)\s?(\d+(\.\d{1,2})?)", text)
-    if match:
-        return float(match.group(2))
+    patterns = [
+        r"(₹)\s*([\d,]+(\.\d{1,2})?)",
+        r"([\d,]+(\.\d{1,2})?)\s*INR",
+        r"Total\s*(Payable|Amount)[^\d]*(₹?\s*[\d,]+(\.\d{1,2})?)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            nums = re.findall(r"[\d,]+(\.\d{1,2})?", match.group())
+            if nums:
+                return float(nums[-1].replace(",", ""))
 
     return None
+
 
 
 def extract_spend(email: dict, service):

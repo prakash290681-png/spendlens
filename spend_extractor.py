@@ -18,9 +18,10 @@ def extract_amount(text: str):
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            nums = re.findall(r"[\d,]+(\.\d{1,2})?", match.group())
-            if nums:
-                return float(nums[-1].replace(",", ""))
+            num_match = re.search(r"[\d,]+(?:\.\d{1,2})?", match.group())
+            if num_match:
+                return float(num_match.group().replace(",", ""))
+
 
     return None
 

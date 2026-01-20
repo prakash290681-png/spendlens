@@ -30,8 +30,13 @@ def extract_amount_from_pdf(email: dict, service):
         if not full_text.strip():
             return None
 
-        match = re.search(r"(₹|Rs\.?)\s*([0-9,]+(\.\d{1,2})?)", full_text)
-        if match:
-            return float(match.group(2).replace(",", ""))
+	matches = re.findall(
+    	   r"(?:₹\s*)?([0-9]{2,5}(?:\.[0-9]{1,2})?)",
+    	   full_text
+	)
+
+	if matches:
+    	   return float(matches[-1])  # last number = final total
+
 
     return None

@@ -40,9 +40,12 @@ def extract_spend(email: dict, service):
     amount = extract_amount(body) or extract_amount(subject)
 
     # ✅ PDF fallback ONLY for Swiggy
+    pdf_used = False
+
     if amount is None and merchant == "Swiggy":
         print(">>> TRYING SWIGGY PDF FALLBACK")
         amount = extract_amount_from_pdf(email, service)
+        pdf_used = True
         print(">>> SWIGGY PDF AMOUNT:", amount)
 
     date = normalize_date(date_str)

@@ -74,8 +74,13 @@ def callback(request: Request):
         spend = extract_spend(email, service)
 
         # ---------- AMOUNT VALIDATION ----------
-        if spend.get("amount") is None or spend["amount"] <= 0:
-            print(">>> SKIP INVALID SPEND")
+        
+        
+        if spend["amount"] is None or spend["amount"] <= 0:
+            if spend["merchant"] == "Swiggy":
+                print(">>> SWIGGY AMOUNT MISSING — SKIPPING SAFELY")
+            else:
+                print(">>> SKIP INVALID SPEND")
             continue
         
         if spend["merchant"] == "Unknown":

@@ -77,6 +77,10 @@ def callback(request: Request):
         if spend.get("amount") is None or spend["amount"] <= 0:
             print(">>> SKIP INVALID SPEND")
             continue
+        
+        if spend["merchant"] == "Unknown":
+            print(">>> SKIP UNKNOWN MERCHANT")
+            continue
 
         # ---------- INSERT ----------
         tx = Transaction(**spend)

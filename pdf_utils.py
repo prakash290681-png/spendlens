@@ -22,26 +22,26 @@ def extract_amount_from_pdf(email: dict, service):
 
         full_text = ""
         for page in reader.pages:
-            full_text += (page.extract_text() or "") + "\n"
+            page_text = page.extract_text() or ""
+            full_text += "\n" + page_text
 
         print(">>> PDF TEXT LEN:", len(full_text))
 
-        # ✅ PRIORITY-BASED EXTRACTION (Swiggy-safe)
+        # ✅ Swiggy-specific totals (real templates)
         patterns = [
-            r"Order Total\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Item Total\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Grand Total\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Amount Paid\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Invoice Total\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Invoice Value\s*₹\s*(\d+(\.\d{1,2})?)",
+            r"Grand\s*Total\s*₹\s*(\d+(\.\d{1,2})?)",
+            r"Total\s*Bill\s*₹\s*(\d+(\.\d{1,2})?)",
+            r"Amount\s*Paid\s*₹\s*(\d+(\.\d{1,2})?)",
+            r"Paid\s*₹\s*(\d+(\.\d{1,2})?)",
         ]
 
         for p in patterns:
-            match = re.search(p, full_text, re.IGNORECASE)
-            if match:
-                amount = float(match.group(1))
-                print(">>> PDF MATCHED AMOUNT:", amount)
+            m = re.search(p, full_text, re.IGNORECASE)
+            if m:
+                amount = float(m.group(1))
+                print(">>> PDF MATCHED TOTAL:", amount)
                 return amount
 
         print(">>> PDF NO VALID TOTAL FOUND")
-        return None
+
+    return None

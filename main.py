@@ -157,3 +157,42 @@ def get_budgets(db: Session = Depends(get_db)):
         }
         for b in budgets
     ]
+
+@app.get("/alerts/monthly")
+def monthly_alerts(
+    month: int | None = None,
+    year: int | None = None,
+    db: Session = Depends(get_db)
+):
+    now = datetime.now()
+    m = month or now.month
+    y = year or now.year
+
+    spends = (
+        db.query(
+            Transaction.category,
+            func.sum(Transaction.amount).label("total")
+        )
+        .filter(
+            extract("month", Transaction.date) == m,
+            extract("year", Transaction.date) == y
+        )
+        .group_by(Transaction.category)
+        .all()
+    )
+
+    budgets = db.query(Budget).all()
+    spend_map = {s.category: s.total for s in spends}
+
+    alerts = []
+    for b in budgets:
+        spent = spend_map.get(b.category, 0)
+        if spent >= b.monthly_limit:
+            alerts.append({
+                "category": b.category,
+                "spent": spent,
+                "limit": b.monthly_limit
+            })
+
+    return {"month": f"{m}-{y}", "alerts": alerts}
+

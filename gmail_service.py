@@ -1,6 +1,6 @@
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import base64
 
@@ -41,17 +41,21 @@ def extract_attachments(payload):
 
 
 def fetch_recent_emails(access_token: str, return_service=False):
-    print(">>> fetch_recent_emails() CALLED <<<")
-
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
 
-    query = '(subject:"Zomato" OR subject:"Swiggy")'
+    START = int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp())
+    END   = int(datetime(2026, 2, 1, tzinfo=timezone.utc).timestamp())
+
+    query = (
+        '(subject:"Zomato" OR subject:"Swiggy") '
+        f'after:{START} before:{END}'
+    )
 
     results = service.users().messages().list(
         userId="me",
         q=query,
-        maxResults=200
+        maxResults=100
     ).execute()
 
     messages = results.get("messages", [])

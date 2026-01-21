@@ -7,6 +7,10 @@ from gmail_service import fetch_recent_emails
 from spend_extractor import extract_spend
 from database import SessionLocal
 from models import Transaction
+from datetime import datetime, timezone
+
+Target_Year = 2026
+Target_Month = 1
 
 router = APIRouter()
 
@@ -44,7 +48,6 @@ def callback(request: Request):
     flow.fetch_token(authorization_response=str(request.url))
     creds = flow.credentials
 
-    # ✅ THIS IS THE CRITICAL LINE
     emails, service = fetch_recent_emails(
         creds.token,
         return_service=True
@@ -53,13 +56,28 @@ def callback(request: Request):
     db = SessionLocal()
     inserted = 0
 
+    TARGET_YEAR = 2026
+    TARGET_MONTH = 1
+
     for email in emails:
         spend = extract_spend(email, service)
 
-        if spend["amount"] is None or spend["date"] is None:
+        # ---- HARD DATE FILTER ----
+        if not spend.get("date"):
+            continue
+
+        spend_date = spend["date"].astimezone(timezone.utc)
+
+        if spend_date.year != TARGET_YEAR or spend_date.month != TARGET_MONTH:
+            print(">>> SKIP OLD SPEND:", spend_date)
+            continue
+
+        # ---- AMOUNT VALIDATION ----
+        if spend.get("amount") is None or spend["amount"] <= 0:
             print(">>> SKIP INVALID SPEND")
             continue
 
+        # ---- INSERT ----
         tx = Transaction(**spend)
 
         try:
@@ -74,3 +92,4 @@ def callback(request: Request):
     print("TOTAL INSERTED:", inserted)
 
     return RedirectResponse("/dashboard")
+

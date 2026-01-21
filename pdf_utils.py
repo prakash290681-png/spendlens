@@ -29,16 +29,15 @@ def extract_amount_from_pdf(email: dict, service):
 
         # ✅ Swiggy-specific totals (real templates)
         patterns = [
-            r"Grand\s*Total\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Total\s*Bill\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Amount\s*Paid\s*₹\s*(\d+(\.\d{1,2})?)",
-            r"Paid\s*₹\s*(\d+(\.\d{1,2})?)",
+            r"(?:to\s*pay|payable)\s*[:\-]?\s*([\d,]+(\.\d{1,2})?)",
+            r"total\s*amount\s*[:\-]?\s*([\d,]+(\.\d{1,2})?)",
+            r"order\s*total\s*[:\-]?\s*([\d,]+(\.\d{1,2})?)",
         ]
 
         for p in patterns:
             m = re.search(p, full_text, re.IGNORECASE)
             if m:
-                amount = float(m.group(1))
+                amount = float(m.group(1).replace(",", ""))
                 print(">>> PDF MATCHED TOTAL:", amount)
                 return amount
 

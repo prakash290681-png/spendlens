@@ -91,7 +91,7 @@ def monthly_summary(
     category_rows = (
         db.query(
             Transaction.category,
-            func.sum(Transaction.amount).label("total")
+            func.round(func.sum(Transaction.amount), 2).label("total")
         )
         .filter(
             extract("month", Transaction.date) == target_month,
@@ -171,7 +171,7 @@ def monthly_alerts(
     spends = (
         db.query(
             Transaction.category,
-            func.sum(Transaction.amount).label("total")
+            func.round(func.sum(Transaction.amount), 2).label("total")
         )
         .filter(
             extract("month", Transaction.date) == m,

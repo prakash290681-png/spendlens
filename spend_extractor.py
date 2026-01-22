@@ -45,9 +45,11 @@ def extract_spend(email: dict, service):
     if amount is None and merchant == "Swiggy":
         print(">>> TRYING SWIGGY PDF FALLBACK")
         amount = extract_amount_from_pdf(email, service)
-        pdf_used = True
-        print(">>> SWIGGY PDF AMOUNT:", amount)
 
+        print(">>> SWIGGY PDF AMOUNT:", amount)
+    if amount is not None:
+        amount = round(float(amount), 2)
+    
     date = normalize_date(date_str)
 
     spend = {

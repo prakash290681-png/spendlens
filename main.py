@@ -74,7 +74,7 @@ def monthly_summary(
         db.query(
             Transaction.merchant,
             Transaction.category,
-            func.sum(Transaction.amount).label("total")
+            func.round(func.sum(Transaction.amount), 2).label("total")
         )
         .filter(
             extract("month", Transaction.date) == target_month,

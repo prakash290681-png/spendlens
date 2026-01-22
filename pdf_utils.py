@@ -1,8 +1,7 @@
-import base64
 import io
 import re
+import base64
 from PyPDF2 import PdfReader
-
 
 def extract_amount_from_pdf(email: dict, service):
     attachments = email.get("attachments", [])
@@ -27,17 +26,15 @@ def extract_amount_from_pdf(email: dict, service):
 
         print(">>> PDF TEXT LEN:", len(full_text))
 
-        # ✅ Swiggy-specific totals (real templates)
+        # 🎯 TARGET SWIGGY TOTALS ONLY
         patterns = [
-            r"(?:to\s*pay|payable)\s*[:\-]?\s*([\d,]+(\.\d{1,2})?)",
-            r"total\s*amount\s*[:\-]?\s*([\d,]+(\.\d{1,2})?)",
-            r"order\s*total\s*[:\-]?\s*([\d,]+(\.\d{1,2})?)",
+            r"(Grand Total|Total Payable|Invoice Total|Invoice Value|Amount Paid)[^\d]*(₹|Rs\.?|INR)?\s*([\d,]+(\.\d{1,2})?)"
         ]
 
-        for p in patterns:
-            m = re.search(p, full_text, re.IGNORECASE)
-            if m:
-                amount = float(m.group(1).replace(",", ""))
+        for pattern in patterns:
+            match = re.search(pattern, full_text, re.IGNORECASE)
+            if match:
+                amount = float(match.group(3).replace(",", ""))
                 print(">>> PDF MATCHED TOTAL:", amount)
                 return amount
 

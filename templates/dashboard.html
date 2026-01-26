@@ -32,10 +32,20 @@ async function loadSummary() {
 
     const div = document.getElementById("summary");
 
-    div.innerHTML = `
+    let html = `
         <h3>Total Spend (This Month)</h3>
         <p style="font-size:24px;"><strong>₹ ${data.total_spent}</strong></p>
     `;
+
+    if (data.by_category && data.by_category.length > 0) {
+        html += "<h4>Category Breakdown</h4><ul>";
+        data.by_category.forEach(item => {
+            html += `<li>${item.category}: ₹ ${item.total}</li>`;
+        });
+        html += "</ul>";
+    }
+
+    div.innerHTML = html;
 }
 
 async function loadAlerts() {
@@ -46,14 +56,11 @@ async function loadAlerts() {
             "<h3>Budget Alerts</h3>⚠️ Alerts not configured yet.";
         return;
     }
-
-    const data = await res.json();
-    document.getElementById("alerts").innerHTML =
-        "<h3>Budget Alerts</h3>✅ No alerts yet.";
 }
 
 loadSummary();
 loadAlerts();
 </script>
+
 </body>
 </html>

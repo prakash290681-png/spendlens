@@ -49,7 +49,13 @@ def extract_spend(email: dict, service):
     date = normalize_date(email.get("Date"))
 
     # Extract email body safely
-    email_body = (email.get("Body") or "").lower()
+    email_body = email.get("body", "")
+    email_subject = email.get("subject", "")
+    email_sender = email.get("from", "")
+
+    merchant = detect_merchant(
+        email_sender or email_subject or email_body
+    )
 
     def build_spend(amount):
         return {

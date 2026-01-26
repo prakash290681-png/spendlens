@@ -1,13 +1,15 @@
-def detect_merchant(sender: str) -> str:
-    sender = sender.lower()
+def detect_merchant(text: str | None):
+    if not text:
+        return "Unknown"
 
-    if "zomato" in sender:
-        return "Zomato"
-    if "swiggy" in sender:
+    text = text.lower()
+
+    if "swiggy" in text:
         return "Swiggy"
+    if "zomato" in text:
+        return "Zomato"
 
     return "Unknown"
-
 
 def detect_category(merchant: str) -> str:
     if merchant in ["Zomato", "Swiggy"]:

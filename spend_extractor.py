@@ -1,110 +1,70 @@
 from utils import detect_merchant, detect_category
 from date_utils import normalize_date
 from pdf_utils import extract_amount_from_pdf
-
-from html import unescape
 import re
 
-def strip_html(text: str) -> str:
-    if not text:
-        return ""
-    text = unescape(text)
-    text = re.sub(r"<[^>]+>", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
-
-def extract_amount_by_labels(text: str):
+def extract_amount(text: str):
     if not text:
         return None
 
-    text = text.lower()
-
-    LABEL_PATTERNS = [
-        r"grand total\s*₹?\s*([\d,]+\.?\d*)",
-        r"order total\s*₹?\s*([\d,]+\.?\d*)",
-        r"invoice value\s*₹?\s*([\d,]+\.?\d*)",
-        r"invoice total\s*₹?\s*([\d,]+\.?\d*)",
-        r"total payable\s*₹?\s*([\d,]+\.?\d*)",
-        r"total amount\s*₹?\s*([\d,]+\.?\d*)",
-        r"item total\s*₹?\s*([\d,]+\.?\d*)",
-        r"total\s*₹?\s*([\d,]+\.?\d*)",
+    patterns = [
+        r"(₹)\s*([\d,]+(\.\d{1,2})?)",
+        r"([\d,]+(\.\d{1,2})?)\s*INR",
+        r"Total\s*(Payable|Amount)[^\d]*(₹?\s*[\d,]+(\.\d{1,2})?)",
     ]
 
-    matches = []
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            num_match = re.search(r"[\d,]+(?:\.\d{1,2})?", match.group())
+            if num_match:
+                return float(num_match.group().replace(",", ""))
 
-    for pattern in LABEL_PATTERNS:
-        for m in re.finditer(pattern, text):
-            try:
-                matches.append(float(m.group(1).replace(",", "")))
-            except ValueError:
-                pass
 
-    # Swiggy repeats totals → last one is final
-    return matches[-1] if matches else None
+    return None
+
+
 
 
 def extract_spend(email: dict, service):
-    # --- Extract safe text ---
-    sender = (email.get("From") or "").lower()
-    subject = (email.get("Subject") or "").lower()
+    print("STEP 1 INPUT EMAIL SUBJECT:", email.get("Subject"))
+    print("🔥🔥🔥 EXTRACT_SPEND FUNCTION CALLED 🔥🔥🔥")
 
-    print("EXTRACT START:", sender, "|", subject)
 
-    email_body = (
-        email.get("body_text")
-        or email.get("snippet")
-        or email.get("Body")
-        or ""
-    )
-    email_subject = email.get("Subject", "") or email.get("subject", "")
-    email_sender = email.get("From", "") or email.get("from", "")
+    sender = email.get("From", "")
+    subject = email.get("Subject", "")
+    body = email.get("Body", "")
+    date_str = email.get("Date", "")
+    source_id = email.get("id") or email.get("Message-Id")
 
-    combined_text = f"{email_sender} {email_subject} {email_body}"
-
-    # --- Detect merchant & category ---
-    merchant = detect_merchant(combined_text)
+    merchant = detect_merchant(sender)
     category = detect_category(merchant)
 
-    # --- Normalize date ---
-    date = normalize_date(email.get("Date"))
+    amount = extract_amount(body) or extract_amount(subject)
 
-    def build_spend(amount):
-        return {
-            "merchant": merchant,
-            "category": category,
-            "amount": amount,
-            "date": date,
-            "source_id": email.get("id"),
-        }
+    # ✅ PDF fallback ONLY for Swiggy
+    pdf_used = False
 
-    # ================= SWIGGY =================
-    if merchant == "Swiggy":
-        print("🍔 SWIGGY DETECTED — attempting email body extraction")
-
-        print("AMOUNT EXTRACTOR CALLED(EMAIL BODY)")
-        clean_text = strip_html(combined_text)
-        amount = extract_amount_by_labels(clean_text)
-
-        
-        if amount:
-            print(f"✅ SWIGGY EMAIL BODY TOTAL FOUND: ₹{amount}")
-            return build_spend(amount)
-
-        print("📄 SWIGGY EMAIL BODY FAILED — trying PDF fallback")
+    if amount is None and merchant == "Swiggy":
+        print(">>> TRYING SWIGGY PDF FALLBACK")
         amount = extract_amount_from_pdf(email, service)
 
-        if amount:
-            print(f"✅ SWIGGY PDF FINAL TOTAL FOUND: ₹{amount}")
-            return build_spend(amount)
+        print("📄 SWIGGY PDF FALLBACK CALLED — amount so far:", amount)
 
-        print("❌ SWIGGY TOTAL NOT FOUND — SKIPPING EMAIL")
-        return None
+    if amount is not None:
+        amount = round(float(amount), 2)
+    
+    date = normalize_date(date_str)
 
-    # ============== OTHER MERCHANTS ==============
-    print("AMOUNT INPUT PREVIEW:", combined_text[:500])
-    print("AMOUNT EXTRACTOR CALLED (COMBINED TEXT)")
+    spend = {
+        "merchant": merchant,
+        "category": category,
+        "amount": amount,
+        "date": date,
+        "source_id": source_id,
+    }
 
-    amount = extract_amount_by_labels(combined_text)
-    if amount:
-        return build_spend(amount)
+    print(">>> EXTRACT_SPEND RESULT:", spend)
+    print("STEP 1 EXTRACTED SPEND:", spend)
 
-    return None
+    return spend

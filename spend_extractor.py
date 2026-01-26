@@ -1,7 +1,16 @@
 from utils import detect_merchant, detect_category
 from date_utils import normalize_date
 from pdf_utils import extract_amount_from_pdf
+
+from html import unescape
 import re
+
+def strip_html(text: str) -> str:
+    if not text:
+        return ""
+    text = unescape(text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 def extract_amount_by_labels(text: str):
     if not text:
@@ -67,7 +76,9 @@ def extract_spend(email: dict, service):
         print("🍔 SWIGGY DETECTED — attempting email body extraction")
 
         print("AMOUNT EXTRACTOR CALLED(EMAIL BODY)")
-        amount = extract_amount_by_labels(email_body)
+        clean_text = strip_html(combined_text)
+        amount = extract_amount_by_labels(clean_text)
+
         
         if amount:
             print(f"✅ SWIGGY EMAIL BODY TOTAL FOUND: ₹{amount}")
@@ -86,7 +97,7 @@ def extract_spend(email: dict, service):
     # ============== OTHER MERCHANTS ==============
     print("AMOUNT INPUT PREVIEW:", combined_text[:500])
     print("AMOUNT EXTRACTOR CALLED (COMBINED TEXT)")
-    
+
     amount = extract_amount_by_labels(combined_text)
     if amount:
         return build_spend(amount)

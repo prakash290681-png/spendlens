@@ -39,9 +39,9 @@ def extract_spend(email: dict, service):
 
     print("EXTRACT START:", sender, "|", subject)
 
-    email_body = email.get("body", "")
-    email_subject = email.get("subject", "")
-    email_sender = email.get("from", "")
+    email_body = email.get("Body", "") or email.get("body", "")
+    email_subject = email.get("Subject", "") or email.get("subject", "")
+    email_sender = email.get("From", "") or email.get("from", "")
 
     combined_text = f"{email_sender} {email_subject} {email_body}"
 

@@ -88,6 +88,18 @@ def callback(request: Request):
             continue
 
         # ---------- INSERT ----------
+
+        # --- DUPLICATE CHECK ---
+        existing = (
+            db.query(Transaction)
+            .filter(Transaction.source_id == spend["source_id"])
+            .first()
+        )
+        if existing:
+            print(">>> DUPLICATE TRANSACTION — SKIPPING:", spend["source_id"])
+            continue
+
+        # --- INSERT ---
         tx = Transaction(**spend)
 
         try:

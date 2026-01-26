@@ -1,9 +1,7 @@
 from utils import detect_merchant, detect_category
 from date_utils import normalize_date
 from pdf_utils import extract_amount_from_pdf
-
 import re
-
 
 def extract_amount_by_labels(text: str):
     if not text:
@@ -17,6 +15,9 @@ def extract_amount_by_labels(text: str):
         r"invoice value\s*₹?\s*([\d,]+\.?\d*)",
         r"invoice total\s*₹?\s*([\d,]+\.?\d*)",
         r"total payable\s*₹?\s*([\d,]+\.?\d*)",
+        r"total amount\s*₹?\s*([\d,]+\.?\d*)",
+        r"item total\s*₹?\s*([\d,]+\.?\d*)",
+        r"total\s*₹?\s*([\d,]+\.?\d*)",
     ]
 
     matches = []
@@ -65,16 +66,16 @@ def extract_spend(email: dict, service):
     if merchant == "Swiggy":
         print("🍔 SWIGGY DETECTED — attempting email body extraction")
 
+        print("AMOUNT EXTRACTOR CALLED(EMAIL BODY)")
         amount = extract_amount_by_labels(email_body)
-        print("AMOUNT EXTRACTOR CALLED")
-
+        
         if amount:
             print(f"✅ SWIGGY EMAIL BODY TOTAL FOUND: ₹{amount}")
             return build_spend(amount)
 
         print("📄 SWIGGY EMAIL BODY FAILED — trying PDF fallback")
+        amount = extract_amount_from_pdf(email, service)
 
-        amount = extract_amount_from_pdf(email)
         if amount:
             print(f"✅ SWIGGY PDF FINAL TOTAL FOUND: ₹{amount}")
             return build_spend(amount)
@@ -84,7 +85,8 @@ def extract_spend(email: dict, service):
 
     # ============== OTHER MERCHANTS ==============
     print("AMOUNT INPUT PREVIEW:", combined_text[:500])
-
+    print("AMOUNT EXTRACTOR CALLED (COMBINED TEXT)")
+    
     amount = extract_amount_by_labels(combined_text)
     if amount:
         return build_spend(amount)

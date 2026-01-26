@@ -81,7 +81,7 @@ def extract_spend(email: dict, service):
         return None
 
     # ============== OTHER MERCHANTS ==============
-    amount = extract_amount_by_labels(email_body)
+    amount = extract_amount_by_labels(combined_text)
     if amount:
         return build_spend(amount)
 

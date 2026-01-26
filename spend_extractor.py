@@ -50,7 +50,8 @@ def extract_spend(email: dict, service):
         print(">>> TRYING SWIGGY PDF FALLBACK")
         amount = extract_amount_from_pdf(email, service)
 
-        print(">>> SWIGGY PDF AMOUNT:", amount)
+        print("📄 SWIGGY PDF FALLBACK CALLED — amount so far:", amount)
+
     if amount is not None:
         amount = round(float(amount), 2)
     

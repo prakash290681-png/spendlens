@@ -43,7 +43,7 @@ def extract_spend(email: dict, service):
     email_subject = email.get("subject", "")
     email_sender = email.get("from", "")
 
-    combined_text = email_sender or email_subject or email_body
+    combined_text = f"{email_sender} {email_subject} {email_body}"
 
     # --- Detect merchant & category ---
     merchant = detect_merchant(combined_text)

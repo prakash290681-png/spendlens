@@ -64,7 +64,6 @@ def extract_spend(email: dict, service):
         "date": date,
         "source_id": source_id,
     }
-    print("📄 SWIGGY PDF TEXT PREVIEW:", pdf_text[:500] if pdf_text else "NO PDF TEXT")
 
     print(">>> EXTRACT_SPEND RESULT:", spend)
     print("STEP 1 EXTRACTED SPEND:", spend)

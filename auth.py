@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 import os
+from datetime import timezone
 
 from gmail_service import fetch_recent_emails
 from spend_extractor import extract_spend
 from database import SessionLocal
 from models import Transaction
 from date_utils import normalize_date
-from datetime import timezone
 
 router = APIRouter()
 
@@ -38,7 +38,10 @@ def create_flow():
 def login():
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
-    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
+    auth_url, _ = flow.authorization_url(
+        access_type="offline",
+        prompt="consent"
+    )
     return RedirectResponse(auth_url)
 
 
@@ -57,60 +60,61 @@ def callback(request: Request):
     db = SessionLocal()
     inserted = 0
 
-    for email in emails:
-        # ---------- HARD DATE FILTER (BEFORE PARSING) ----------
-        email_date = normalize_date(email.get("Date"))
+    try:
+        for email in emails:
+            # ---------- HARD DATE FILTER ----------
+            email_date = normalize_date(email.get("Date"))
+            if not email_date:
+                continue
 
-        if not email_date:
-            continue
+            email_date = email_date.astimezone(timezone.utc)
 
-        email_date = email_date.astimezone(timezone.utc)
+            if (
+                email_date.year != TARGET_YEAR
+                or email_date.month != TARGET_MONTH
+            ):
+                print(">>> SKIP EMAIL BEFORE PARSING:", email_date)
+                continue
 
-        if email_date.year != TARGET_YEAR or email_date.month != TARGET_MONTH:
-            print(">>> SKIP EMAIL BEFORE PARSING:", email_date)
-            continue
+            # ---------- PARSE ----------
+            spend = extract_spend(email, service)
+            print("DEBUG spend:", spend)
 
-        # ---------- NOW SAFE TO PARSE ----------
-        spend = extract_spend(email, service)
+            if spend is None:
+                print(">>> SKIP: spend extraction failed")
+                continue
 
-        # ---------- AMOUNT VALIDATION ----------
-        
-        
-        if spend["amount"] is None or spend["amount"] <= 0:
-            if spend["merchant"] == "Swiggy":
-                print(">>> SWIGGY AMOUNT MISSING — SKIPPING SAFELY")
-            else:
-                print(">>> SKIP INVALID SPEND")
-            continue
-        
-        if spend["merchant"] == "Unknown":
-            print(">>> SKIP UNKNOWN MERCHANT")
-            continue
+            if spend.get("amount") is None or spend["amount"] <= 0:
+                print(">>> SKIP: invalid amount")
+                continue
 
-        # ---------- INSERT ----------
+            if spend.get("merchant") == "Unknown":
+                print(">>> SKIP: unknown merchant")
+                continue
 
-        # --- DUPLICATE CHECK ---
-        existing = (
-            db.query(Transaction)
-            .filter(Transaction.source_id == spend["source_id"])
-            .first()
-        )
-        if existing:
-            print(">>> DUPLICATE TRANSACTION — SKIPPING:", spend["source_id"])
-            continue
+            # ---------- DUPLICATE CHECK ----------
+            existing = (
+                db.query(Transaction)
+                .filter(Transaction.source_id == spend["source_id"])
+                .first()
+            )
 
-        # --- INSERT ---
-        tx = Transaction(**spend)
+            if existing:
+                print(">>> DUPLICATE — SKIPPING:", spend["source_id"])
+                continue
 
-        try:
-            db.add(tx)
-            db.commit()
-            inserted += 1
-        except Exception as e:
-            print("DB ERROR:", e)
-            db.rollback()
+            # ---------- INSERT ----------
+            tx = Transaction(**spend)
+            try:
+                db.add(tx)
+                db.commit()
+                inserted += 1
+            except Exception as e:
+                print("DB ERROR:", e)
+                db.rollback()
 
-    db.close()
+    finally:
+        db.close()
+
     print("TOTAL INSERTED:", inserted)
-
     return RedirectResponse("/dashboard")

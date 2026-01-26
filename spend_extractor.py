@@ -34,6 +34,11 @@ def extract_amount_by_labels(text: str):
 
 def extract_spend(email: dict, service):
     # --- Extract safe text ---
+    sender = (email.get("From") or "").lower()
+    subject = (email.get("Subject") or "").lower()
+
+    print("EXTRACT START:", sender, "|", subject)
+
     email_body = email.get("body", "")
     email_subject = email.get("subject", "")
     email_sender = email.get("from", "")

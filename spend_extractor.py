@@ -66,6 +66,8 @@ def extract_spend(email: dict, service):
         print("🍔 SWIGGY DETECTED — attempting email body extraction")
 
         amount = extract_amount_by_labels(email_body)
+        print("AMOUNT EXTRACTOR CALLED")
+
         if amount:
             print(f"✅ SWIGGY EMAIL BODY TOTAL FOUND: ₹{amount}")
             return build_spend(amount)
@@ -81,6 +83,8 @@ def extract_spend(email: dict, service):
         return None
 
     # ============== OTHER MERCHANTS ==============
+    print("AMOUNT INPUT PREVIEW:", combined_text[:500])
+
     amount = extract_amount_by_labels(combined_text)
     if amount:
         return build_spend(amount)

@@ -32,53 +32,28 @@ async function loadSummary() {
 
     const div = document.getElementById("summary");
 
-    if (!data.by_category || data.by_category.length === 0) {
-        div.innerHTML = "<p>No transactions for this month.</p>";
-        return;
-    }
-
-    let html = "<h3>Category Summary</h3><ul>";
-    data.by_category.forEach(item => {
-        html += `<li><strong>${item.category}</strong>: ₹${item.total}</li>`;
-    });
-    html += "</ul>";
-
-    html += "<h3>Merchant Breakdown</h3><ul>";
-    data.by_merchant.forEach(item => {
-        html += `<li>${item.merchant}: ₹${item.total}</li>`;
-    });
-    html += "</ul>";
-
-    div.innerHTML = html;
+    div.innerHTML = `
+        <h3>Total Spend (This Month)</h3>
+        <p style="font-size:24px;"><strong>₹ ${data.total_spent}</strong></p>
+    `;
 }
 
 async function loadAlerts() {
     const res = await fetch("/alerts/monthly");
-    const data = await res.json();
 
-    const div = document.getElementById("alerts");
-
-    if (!data.alerts || data.alerts.length === 0) {
-        div.innerHTML = "<h3>Budget Alerts</h3>✅ No alerts. You are within budget.";
+    if (!res.ok) {
+        document.getElementById("alerts").innerHTML =
+            "<h3>Budget Alerts</h3>⚠️ Alerts not configured yet.";
         return;
     }
 
-    let html = "<h3>🚨 Budget Alerts</h3><ul>";
-    data.alerts.forEach(a => {
-        const cls = a.status === "exceeded" ? "exceeded" : "warning";
-        html += `<li class="${cls}">
-            ${a.category}: ₹${a.spent} / ₹${a.limit}
-            (${a.percent}% – ${a.status.toUpperCase()})
-        </li>`;
-    });
-    html += "</ul>";
-
-    div.innerHTML = html;
+    const data = await res.json();
+    document.getElementById("alerts").innerHTML =
+        "<h3>Budget Alerts</h3>✅ No alerts yet.";
 }
 
 loadSummary();
 loadAlerts();
 </script>
-
 </body>
 </html>

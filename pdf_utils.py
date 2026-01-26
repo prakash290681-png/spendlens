@@ -24,7 +24,17 @@ def extract_amount_from_pdf(email: dict, service):
             page_text = page.extract_text() or ""
             full_text += "\n" + page_text
 
+        print(">>> FULL PDF TEXT PREVIEW:", full_text[:500])
+
         print(">>> PDF TEXT LEN:", len(full_text))
+        # 🔍 DEBUG: show all currency amounts found
+        all_matches = re.findall(
+            r"(₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)",
+            full_text,
+            re.IGNORECASE
+       )
+
+        print(">>> ALL CURRENCY MATCHES:", [m[1] for m in all_matches])
 
         # 🎯 TARGET SWIGGY TOTALS ONLY
         patterns = [

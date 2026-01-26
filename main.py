@@ -179,6 +179,3 @@ def monthly_alerts():
         "by_category": by_category,
         "by_merchant": by_merchant
     }
-
-
-

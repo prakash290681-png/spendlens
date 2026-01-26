@@ -28,3 +28,18 @@ def dashboard(request: Request):
         {"request": request}
     )
 
+from sqlalchemy.orm import Session
+from database import SessionLocal
+from models import Transaction
+from sqlalchemy import func
+
+@app.get("/summary/monthly")
+def monthly_summary():
+    db: Session = SessionLocal()
+    total = db.query(func.sum(Transaction.amount)).scalar() or 0
+    db.close()
+
+    return {
+        "total_spent": round(float(total), 2)
+    }
+

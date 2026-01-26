@@ -1,6 +1,6 @@
 from utils import detect_merchant, detect_category
 from date_utils import normalize_date
-from pdf_utils import extract_pdf_text
+from pdf_utils import extract_amount_from_pdf
 
 import re
 
@@ -67,12 +67,10 @@ def extract_spend(email: dict, service):
 
         print("📄 SWIGGY EMAIL BODY FAILED — trying PDF fallback")
 
-        pdf_text = extract_pdf_text(email)
-        if pdf_text:
-            amount = extract_amount_by_labels(pdf_text)
-            if amount:
-                print(f"✅ SWIGGY PDF FINAL TOTAL FOUND: ₹{amount}")
-                return build_spend(amount)
+        amount = extract_amount_from_pdf(email)
+        if amount:
+            print(f"✅ SWIGGY PDF FINAL TOTAL FOUND: ₹{amount}")
+            return build_spend(amount)
 
         print("❌ SWIGGY TOTAL NOT FOUND — SKIPPING EMAIL")
         return None

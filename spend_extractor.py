@@ -49,7 +49,12 @@ def extract_spend(email: dict, service):
 
     print("EXTRACT START:", sender, "|", subject)
 
-    email_body = email.get("Body", "") or email.get("body", "")
+    email_body = (
+        email.get("body_text")
+        or email.get("snippet")
+        or email.get("Body")
+        or ""
+    )
     email_subject = email.get("Subject", "") or email.get("subject", "")
     email_sender = email.get("From", "") or email.get("from", "")
 

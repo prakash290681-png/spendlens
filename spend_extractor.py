@@ -42,12 +42,13 @@ def extract_spend(email: dict, service):
 
     amount = extract_amount(body) or extract_amount(subject)
 
-    # ✅ PDF fallback ONLY for Swiggy
-    pdf_used = False
+    # 🔒 Swiggy: ALWAYS trust PDF invoice total if available
+    if merchant == "Swiggy":
+        pdf_amount = extract_amount_from_pdf(email, service)
+        if pdf_amount is not None:
+            amount = pdf_amount
 
-    if amount is None and merchant == "Swiggy":
-        print(">>> TRYING SWIGGY PDF FALLBACK")
-        amount = extract_amount_from_pdf(email, service)
+        
 
         print("📄 SWIGGY PDF FALLBACK CALLED — amount so far:", amount)
 

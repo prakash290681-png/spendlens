@@ -10,6 +10,8 @@ from database import SessionLocal
 from models import Transaction
 from date_utils import normalize_date
 
+from sqlalchemy import Date
+
 router = APIRouter()
 
 TARGET_YEAR = 2026
@@ -47,7 +49,8 @@ def login():
 
 @router.get("/auth/callback")
 def callback(request: Request):
-    print("🔥 RUNNING AUTH.PY VERSION 2026-01-DEBUG-7")
+    print("🔥 RUNNING AUTH.PY VERSION 2026-01-FINAL")
+
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     flow.fetch_token(authorization_response=str(request.url))
@@ -77,7 +80,6 @@ def callback(request: Request):
                 email.get("labelIds"),
             )
 
-
             # ---------- DATE FILTER ----------
             email_date = normalize_date(email.get("Date"))
             if not email_date:
@@ -91,46 +93,32 @@ def callback(request: Request):
             spend = extract_spend(email, service)
             print("DEBUG spend:", spend)
 
-            if not spend or spend["amount"] <= 0:
+            if not spend or spend.get("amount") is None or spend["amount"] <= 0:
                 continue
 
             # =====================================================
-            # SWIGGY DEDUPE (FINAL)
+            # ✅ SWIGGY DEDUPE (amount + calendar date)
             # =====================================================
-           from sqlalchemy import Date, func
-
-            # --- STRONG SWIGGY DEDUPE (FINAL) ---
             if spend["merchant"] == "Swiggy":
-                existing = (
-                    db.query(Transaction)
-                        .filter(
-                            Transaction.merchant == "Swiggy",
-                            Transaction.amount == spend["amount"],
-                            Transaction.date.cast(Date) == spend["date"].date()
-                        )
-                        .first()
-                    )
-
-                    if existing:
-                        print(">>> DUPLICATE SWIGGY (amount+date) — SKIPPING:", spend)
-                        continue
-
-                # 2️⃣ Same-day same-amount dedupe (email + bank)
                 existing = (
                     db.query(Transaction)
                     .filter(
                         Transaction.merchant == "Swiggy",
-                        Transaction.date == spend["date"],
                         Transaction.amount == spend["amount"],
+                        Transaction.date.cast(Date) == spend["date"].date()
                     )
                     .first()
                 )
+
                 if existing:
-                    print(">>> DUPLICATE SWIGGY SAME DAY+AMOUNT — SKIPPING")
+                    print(
+                        ">>> DUPLICATE SWIGGY (amount+date) — SKIPPING:",
+                        spend
+                    )
                     continue
 
             # =====================================================
-            # OTHER MERCHANTS
+            # OTHER MERCHANTS (SOURCE ID DEDUPE)
             # =====================================================
             else:
                 existing = (
@@ -138,6 +126,7 @@ def callback(request: Request):
                     .filter(Transaction.source_id == spend["source_id"])
                     .first()
                 )
+
                 if existing:
                     print(">>> DUPLICATE SOURCE ID — SKIPPING")
                     continue

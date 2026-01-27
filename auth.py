@@ -99,7 +99,7 @@ def callback(request: Request):
             # =====================================================
             if spend["merchant"] == "Swiggy":
 
-                # PDF order-level dedupe ONLY
+                # 1️⃣ Order-level dedupe (PDFs)
                 if spend.get("source_id") and spend["source_id"].isdigit():
                     existing = (
                         db.query(Transaction)
@@ -112,6 +112,20 @@ def callback(request: Request):
                     if existing:
                         print(">>> DUPLICATE SWIGGY PDF — SKIPPING")
                         continue
+
+                # 2️⃣ Same-day same-amount dedupe (email + bank)
+                existing = (
+                    db.query(Transaction)
+                    .filter(
+                        Transaction.merchant == "Swiggy",
+                        Transaction.date == spend["date"],
+                        Transaction.amount == spend["amount"],
+                    )
+                    .first()
+                )
+                if existing:
+                    print(">>> DUPLICATE SWIGGY SAME DAY+AMOUNT — SKIPPING")
+                    continue
 
             # =====================================================
             # OTHER MERCHANTS

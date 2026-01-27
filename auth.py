@@ -68,6 +68,16 @@ def callback(request: Request):
             if "DRAFT" in email.get("labelIds", []):
                 continue
 
+            print(
+                "📩 EMAIL:",
+                email.get("Subject"),
+                "| DATE:",
+                email.get("Date"),
+                "| LABELS:",
+                email.get("labelIds"),
+            )
+
+
             # ---------- DATE FILTER ----------
             email_date = normalize_date(email.get("Date"))
             if not email_date:

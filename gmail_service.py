@@ -9,20 +9,42 @@ def gmail_timestamp(dt: datetime) -> int:
     return int(time.mktime(dt.timetuple()))
 
 
+# -------------------------------------------------
+# BODY EXTRACTION — FIXED (HTML + TEXT + NESTED)
+# -------------------------------------------------
 def extract_body(payload):
-    if "parts" in payload:
-        for part in payload["parts"]:
-            if part.get("mimeType") == "text/html" and "data" in part.get("body", {}):
+    # 1️⃣ Direct body (rare but valid)
+    body = payload.get("body", {}).get("data")
+    if body:
+        return base64.urlsafe_b64decode(body).decode("utf-8", errors="ignore")
+
+    # 2️⃣ Walk all parts recursively
+    def walk_parts(parts):
+        for part in parts:
+            mime = part.get("mimeType", "")
+            data = part.get("body", {}).get("data")
+
+            if mime in ("text/plain", "text/html") and data:
                 return base64.urlsafe_b64decode(
-                    part["body"]["data"]
+                    data
                 ).decode("utf-8", errors="ignore")
-    elif "body" in payload and "data" in payload["body"]:
-        return base64.urlsafe_b64decode(
-            payload["body"]["data"]
-        ).decode("utf-8", errors="ignore")
+
+            # 🔁 Nested multipart
+            if "parts" in part:
+                found = walk_parts(part["parts"])
+                if found:
+                    return found
+        return ""
+
+    if "parts" in payload:
+        return walk_parts(payload["parts"])
+
     return ""
 
 
+# -------------------------------------------------
+# ATTACHMENTS
+# -------------------------------------------------
 def extract_attachments(payload):
     attachments = []
 
@@ -40,6 +62,9 @@ def extract_attachments(payload):
     return attachments
 
 
+# -------------------------------------------------
+# FETCH EMAILS
+# -------------------------------------------------
 def fetch_recent_emails(access_token: str, return_service=False):
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
@@ -47,13 +72,13 @@ def fetch_recent_emails(access_token: str, return_service=False):
     START = int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp())
     END   = int(datetime(2026, 2, 1, tzinfo=timezone.utc).timestamp())
 
-    query = (
-        '(subject:"Zomato" OR subject:"Swiggy") '
-        f'after:{START} before:{END}'
-    )
+    # NOTE: Do NOT restrict to subject only
+    # Bank alerts often don’t contain "Swiggy" in subject
+    query = f"after:{START} before:{END}"
 
     results = service.users().messages().list(
         userId="me",
+        q=query,
         maxResults=500
     ).execute()
 
@@ -72,6 +97,8 @@ def fetch_recent_emails(access_token: str, return_service=False):
 
         email["id"] = msg["id"]
         email["Body"] = extract_body(msg_data["payload"])
+        email["snippet"] = msg_data.get("snippet", "")   # ⭐ TINY BUT CRITICAL
+        email["labelIds"] = msg_data.get("labelIds", [])
         email["attachments"] = extract_attachments(msg_data["payload"])
 
         emails.append(email)

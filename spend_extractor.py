@@ -63,7 +63,7 @@ def is_bank_alert(email: dict) -> bool:
 
     return (
         any(b in sender for b in bank_senders)
-        and "swiggy" in body
+        and ("swiggy" in body or "swiggy" in email.get("snippet", "").lower())
         and any(d in body for d in debit_words)
     )
 

@@ -71,6 +71,12 @@ def is_bank_alert(email: dict) -> bool:
 
 # ---------- MAIN ----------
 def extract_spend(email: dict, service):
+    print("🧪 BANK ALERT CHECK:",
+      "FROM=", email.get("From"),
+      "| SUBJECT=", email.get("Subject"),
+      "| BODY_HAS_SWIGGY=", "swiggy" in (email.get("Body","").lower()),
+      "| IS_BANK_ALERT=", is_bank_alert(email))
+
     sender = email.get("From", "")
     subject = email.get("Subject", "")
     body = email.get("Body", "")

@@ -9,11 +9,19 @@ def extract_amount(text: str):
     if not text:
         return None
 
-    matches = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", text)
-    if not matches:
-        return None
+    patterns = [
+        r"₹\s*([\d,]+(?:\.\d{1,2})?)",
+        r"rs\.?\s*([\d,]+(?:\.\d{1,2})?)",
+        r"inr\s*([\d,]+(?:\.\d{1,2})?)",
+    ]
 
-    return float(matches[0].replace(",", ""))
+    for pattern in patterns:
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            return float(m.group(1).replace(",", ""))
+
+    return None
+
 
 
 # ---------- SWIGGY BODY TOTAL (KEYWORDS) ----------

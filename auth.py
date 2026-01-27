@@ -9,6 +9,8 @@ from spend_extractor import extract_spend
 from database import SessionLocal
 from models import Transaction
 from date_utils import normalize_date
+from sqlalchemy import Date
+
 
 router = APIRouter()
 
@@ -92,16 +94,32 @@ def callback(request: Request):
                 print(">>> SKIP: unknown merchant")
                 continue
 
-            # ---------- DUPLICATE CHECK ----------
-            existing = (
-                db.query(Transaction)
-                .filter(Transaction.source_id == spend["source_id"])
-                .first()
-            )
+            # --- DUPLICATE CHECK ---
 
-            if existing:
-                print(">>> DUPLICATE — SKIPPING:", spend["source_id"])
-                continue
+            if spend["merchant"] == "Swiggy":
+                existing = (
+                    db.query(Transaction)
+                    .filter(
+                        Transaction.merchant == "Swiggy",
+                        Transaction.date.cast(Date) == spend["date"].date()
+                    )
+                    .first()
+                )
+
+                if existing:
+                    print(">>> SWIGGY DUPLICATE (date-level) — SKIPPING:", spend)
+                    continue
+            else:
+                existing = (
+                    db.query(Transaction)
+                    .filter(Transaction.source_id == spend["source_id"])
+                    .first()
+                )
+
+                if existing:
+                    print(">>> DUPLICATE TRANSACTION — SKIPPING:", spend["source_id"])
+                    continue
+
 
             # ---------- INSERT ----------
             tx = Transaction(**spend)

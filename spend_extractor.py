@@ -39,13 +39,27 @@ def extract_spend(email: dict, service):
 
     amount = None
 
-    # 🔒 SWIGGY: PDF ONLY — NO BODY / SUBJECT EXTRACTION
+    # --- SWIGGY ONLY ---
     if merchant == "Swiggy":
-        pdf_amount = extract_amount_from_pdf(email, service)
-        if pdf_amount is None:
-            print("🚫 SWIGGY WITHOUT PDF — SKIPPING")
-            return None
-        amount = pdf_amount
+
+        # 1️⃣ Bank / card alert detection
+        if is_bank_alert(email):
+            amount = extract_amount(body)
+            if amount:
+                return build_spend(amount, source="bank")
+
+        # 2️⃣ Swiggy email body (non-PDF)
+        amount = extract_amount(body)
+        if amount:
+            return build_spend(amount, source="email")
+
+        # 3️⃣ PDF fallback (last resort)
+        amount = extract_amount_from_pdf(email, service)
+        if amount:
+            return build_spend(amount, source="pdf")
+
+        return None
+        
 
     # ✅ ALL OTHER MERCHANTS (ZOMATO UNCHANGED)
     else:

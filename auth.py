@@ -47,6 +47,7 @@ def login():
 
 @router.get("/auth/callback")
 def callback(request: Request):
+    print("🔥 RUNNING AUTH.PY VERSION 2026-01-DEBUG-7")
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     flow.fetch_token(authorization_response=str(request.url))
@@ -112,6 +113,7 @@ def callback(request: Request):
                     .first()
                 )
                 if existing:
+                    print(">>> DUPLICATE SOURCE ID — SKIPPING")
                     continue
 
             # ---------- INSERT ----------

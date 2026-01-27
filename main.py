@@ -52,6 +52,29 @@ def cleanup_zomato_spends():
         "deleted_rows": deleted,
     }
 
+
+@app.get("/admin/debug-zomato")
+def debug_zomato_rows():
+    db = SessionLocal()
+
+    rows = (
+        db.query(Transaction)
+        .filter(Transaction.merchant == "Zomato")
+        .all()
+    )
+
+    db.close()
+
+    return [
+        {
+            "id": r.id,
+            "amount": r.amount,
+            "date": r.date.isoformat(),
+            "source_id": r.source_id,
+        }
+        for r in rows
+    ]
+
 # -------------------------------------------------
 # Health check
 # -------------------------------------------------

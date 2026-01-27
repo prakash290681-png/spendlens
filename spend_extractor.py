@@ -63,7 +63,7 @@ def is_bank_alert(email: dict, merchant: str) -> bool:
     return (
         any(b in sender for b in bank_senders)
         and any(d in subject for d in debit_words)
-        and merchant.lower() in body
+        and "swiggy" in body
     )
 
 
@@ -75,7 +75,8 @@ def extract_spend(email: dict, service):
     date_str = email.get("Date", "")
     source_id = email.get("id") or email.get("Message-Id")
 
-    merchant = detect_merchant(sender)
+    merchant = detect_merchant(sender) or detect_merchant(subject) or detect_merchant(body)
+
     category = detect_category(merchant)
     date = normalize_date(date_str)
 

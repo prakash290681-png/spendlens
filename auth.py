@@ -97,20 +97,22 @@ def callback(request: Request):
             # =====================================================
             # SWIGGY DEDUPE (FINAL)
             # =====================================================
-            if spend["merchant"] == "Swiggy":
+           from sqlalchemy import Date, func
 
-                # 1️⃣ Order-level dedupe (PDFs)
-                if spend.get("source_id") and spend["source_id"].isdigit():
-                    existing = (
-                        db.query(Transaction)
+            # --- STRONG SWIGGY DEDUPE (FINAL) ---
+            if spend["merchant"] == "Swiggy":
+                existing = (
+                    db.query(Transaction)
                         .filter(
                             Transaction.merchant == "Swiggy",
-                            Transaction.source_id == spend["source_id"]
+                            Transaction.amount == spend["amount"],
+                            Transaction.date.cast(Date) == spend["date"].date()
                         )
                         .first()
                     )
+
                     if existing:
-                        print(">>> DUPLICATE SWIGGY PDF — SKIPPING")
+                        print(">>> DUPLICATE SWIGGY (amount+date) — SKIPPING:", spend)
                         continue
 
                 # 2️⃣ Same-day same-amount dedupe (email + bank)

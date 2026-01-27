@@ -74,7 +74,18 @@ def fetch_recent_emails(access_token: str, return_service=False):
 
     # NOTE: Do NOT restrict to subject only
     # Bank alerts often don’t contain "Swiggy" in subject
-    query = f"after:{START} before:{END}"
+    query =(
+        '('
+        'subject:"Zomato" OR '
+        'from:swiggy OR '
+        'from:hdfc OR '
+        'from:icici OR '
+        'from:axis OR '
+        'from:sbi"'
+        ') '
+        f'after:{START} before:{END}'
+    )
+
 
     results = service.users().messages().list(
         userId="me",

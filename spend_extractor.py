@@ -24,6 +24,25 @@ def extract_amount(text: str):
     return None
 
 
+def is_bank_alert(email: dict) -> bool:
+    sender = (email.get("From") or "").lower()
+    subject = (email.get("Subject") or "").lower()
+
+    bank_keywords = [
+        "hdfc",
+        "icici",
+        "sbi",
+        "axis",
+        "kotak",
+        "yes bank",
+        "transaction alert",
+        "spent",
+        "debit",
+    ]
+
+    return any(k in sender or k in subject for k in bank_keywords)
+
+
 def extract_spend(email: dict, service):
     print("STEP 1 INPUT EMAIL SUBJECT:", email.get("Subject"))
     print("🔥🔥🔥 EXTRACT_SPEND FUNCTION CALLED 🔥🔥🔥")
@@ -36,49 +55,41 @@ def extract_spend(email: dict, service):
 
     merchant = detect_merchant(sender)
     category = detect_category(merchant)
+    date = normalize_date(date_str)
 
-    amount = None
+    def build_spend(amount):
+        return {
+            "merchant": merchant,
+            "category": category,
+            "amount": round(float(amount), 2),
+            "date": date,
+            "source_id": source_id,
+        }
 
-    # --- SWIGGY ONLY ---
+    # ================= SWIGGY ONLY =================
     if merchant == "Swiggy":
 
-        # 1️⃣ Bank / card alert detection
+        # 1️⃣ Bank / card alert (highest priority)
         if is_bank_alert(email):
-            amount = extract_amount(body)
+            amount = extract_amount(body) or extract_amount(subject)
             if amount:
-                return build_spend(amount, source="bank")
+                return build_spend(amount)
 
         # 2️⃣ Swiggy email body (non-PDF)
         amount = extract_amount(body)
         if amount:
-            return build_spend(amount, source="email")
+            return build_spend(amount)
 
         # 3️⃣ PDF fallback (last resort)
         amount = extract_amount_from_pdf(email, service)
         if amount:
-            return build_spend(amount, source="pdf")
+            return build_spend(amount)
 
         return None
-        
 
-    # ✅ ALL OTHER MERCHANTS (ZOMATO UNCHANGED)
-    else:
-        amount = extract_amount(body) or extract_amount(subject)
+    # ================= ALL OTHER MERCHANTS (ZOMATO UNCHANGED) =================
+    amount = extract_amount(body) or extract_amount(subject)
+    if amount:
+        return build_spend(amount)
 
-    if amount is not None:
-        amount = round(float(amount), 2)
-
-    date = normalize_date(date_str)
-
-    spend = {
-        "merchant": merchant,
-        "category": category,
-        "amount": amount,
-        "date": date,
-        "source_id": source_id,
-    }
-
-    print(">>> EXTRACT_SPEND RESULT:", spend)
-    print("STEP 1 EXTRACTED SPEND:", spend)
-
-    return spend
+    return None

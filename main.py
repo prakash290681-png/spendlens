@@ -1,42 +1,67 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 
-from auth import router as auth_router
 from database import engine, SessionLocal
 from models import Base, Transaction
+from auth import router as auth_router
 from admin import router as admin_router
 
-
-MONTHLY_BUDGETS = {
-    "Food Delivery": 2000
-}
-
-# --- App setup ---
+# -------------------------------------------------
+# App setup
+# -------------------------------------------------
 app = FastAPI()
+
+app.include_router(auth_router)
 app.include_router(admin_router)
 
-# Create tables if they don't exist
+# Create tables if not exist
 Base.metadata.create_all(bind=engine)
 
 # Templates
 templates = Jinja2Templates(directory="templates")
 
-# Routers
-app.include_router(auth_router)
+# -------------------------------------------------
+# TEMP ADMIN CLEANUP ENDPOINT (STEP 1 ONLY)
+# -------------------------------------------------
+@app.post("/admin/cleanup-zomato")
+def cleanup_zomato_spends():
+    db = SessionLocal()
 
-# --- Health check ---
+    bad_amounts = [499.0, 283.65]
+
+    deleted = (
+        db.query(Transaction)
+        .filter(
+            Transaction.merchant == "Zomato",
+            Transaction.amount.in_(bad_amounts),
+        )
+        .delete(synchronize_session=False)
+    )
+
+    db.commit()
+    db.close()
+
+    return {
+        "status": "ok",
+        "deleted_rows": deleted,
+    }
+
+# -------------------------------------------------
+# Health check
+# -------------------------------------------------
 @app.get("/")
 def health_check():
     return {"status": "SpendLens backend is running 🚀"}
 
-# --- Dashboard ---
+# -------------------------------------------------
+# Dashboard
+# -------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse(
@@ -44,9 +69,9 @@ def dashboard(request: Request):
         {"request": request}
     )
 
-# --- Monthly summary ---
-from datetime import datetime, timezone
-
+# -------------------------------------------------
+# Monthly config
+# -------------------------------------------------
 TARGET_YEAR = 2026
 TARGET_MONTH = 1
 
@@ -54,19 +79,20 @@ MONTHLY_BUDGETS = {
     "Food Delivery": 2000
 }
 
-
-# --- Monthly summary ---
+# -------------------------------------------------
+# Monthly summary
+# -------------------------------------------------
 @app.get("/summary/monthly")
 def monthly_summary():
     db = SessionLocal()
 
     start = datetime(TARGET_YEAR, TARGET_MONTH, 1, tzinfo=timezone.utc)
-    if TARGET_MONTH == 12:
-        end = datetime(TARGET_YEAR + 1, 1, 1, tzinfo=timezone.utc)
-    else:
-        end = datetime(TARGET_YEAR, TARGET_MONTH + 1, 1, tzinfo=timezone.utc)
+    end = (
+        datetime(TARGET_YEAR + 1, 1, 1, tzinfo=timezone.utc)
+        if TARGET_MONTH == 12
+        else datetime(TARGET_YEAR, TARGET_MONTH + 1, 1, tzinfo=timezone.utc)
+    )
 
-    # Category breakdown
     category_rows = (
         db.query(
             Transaction.category,
@@ -77,7 +103,6 @@ def monthly_summary():
         .all()
     )
 
-    # Merchant breakdown
     merchant_rows = (
         db.query(
             Transaction.merchant,
@@ -90,35 +115,33 @@ def monthly_summary():
 
     total_spent = sum(row.total for row in category_rows)
 
-    by_category = [
-        {"category": row.category, "total": round(row.total, 2)}
-        for row in category_rows
-    ]
-
-    by_merchant = [
-        {"merchant": row.merchant, "total": round(row.total, 2)}
-        for row in merchant_rows
-    ]
-
     db.close()
 
     return {
         "total_spent": round(total_spent, 2),
-        "by_category": by_category,
-        "by_merchant": by_merchant
+        "by_category": [
+            {"category": r.category, "total": round(r.total, 2)}
+            for r in category_rows
+        ],
+        "by_merchant": [
+            {"merchant": r.merchant, "total": round(r.total, 2)}
+            for r in merchant_rows
+        ],
     }
 
-
-# --- Monthly alerts ---
+# -------------------------------------------------
+# Monthly alerts
+# -------------------------------------------------
 @app.get("/alerts/monthly")
 def monthly_alerts():
     db = SessionLocal()
 
     start = datetime(TARGET_YEAR, TARGET_MONTH, 1, tzinfo=timezone.utc)
-    if TARGET_MONTH == 12:
-        end = datetime(TARGET_YEAR + 1, 1, 1, tzinfo=timezone.utc)
-    else:
-        end = datetime(TARGET_YEAR, TARGET_MONTH + 1, 1, tzinfo=timezone.utc)
+    end = (
+        datetime(TARGET_YEAR + 1, 1, 1, tzinfo=timezone.utc)
+        if TARGET_MONTH == 12
+        else datetime(TARGET_YEAR, TARGET_MONTH + 1, 1, tzinfo=timezone.utc)
+    )
 
     rows = (
         db.query(
@@ -151,35 +174,3 @@ def monthly_alerts():
     db.close()
 
     return {"alerts": alerts}
-
-    # --- Merchant breakdown ---
-    merchant_rows = (
-        db.query(
-            Transaction.merchant,
-            func.sum(Transaction.amount).label("total")
-        )
-        .filter(Transaction.date >= start, Transaction.date < end)
-        .group_by(Transaction.merchant)
-        .all()
-    )
-
-    total_spent = sum(row.total for row in category_rows)
-
-    by_category = [
-        {"category": row.category, "total": round(row.total, 2)}
-        for row in category_rows
-    ]
-
-    by_merchant = [
-        {"merchant": row.merchant, "total": round(row.total, 2)}
-        for row in merchant_rows
-    ]
-
-    db.close()
-
-    return {
-        "total_spent": round(total_spent, 2),
-        "by_category": by_category,
-        "by_merchant": by_merchant
-    }
-

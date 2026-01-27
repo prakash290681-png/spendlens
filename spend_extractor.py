@@ -4,6 +4,7 @@ from date_utils import normalize_date
 from pdf_utils import extract_amount_from_pdf
 
 
+# ---------- GENERIC AMOUNT ----------
 def extract_amount(text: str):
     if not text:
         return None
@@ -24,25 +25,43 @@ def extract_amount(text: str):
     return None
 
 
+# ---------- SWIGGY BODY TOTAL (handles multi-item orders) ----------
+def extract_swiggy_total_from_body(text: str):
+    if not text:
+        return None
+
+    text = text.lower()
+
+    patterns = [
+        r"(order total|grand total|amount paid|total payable)[^\d₹]*₹?\s*([\d,]+(?:\.\d{1,2})?)"
+    ]
+
+    matches = []
+    for pattern in patterns:
+        for m in re.finditer(pattern, text):
+            matches.append(float(m.group(2).replace(",", "")))
+
+    # last total = final payable
+    return matches[-1] if matches else None
+
+
+# ---------- BANK ALERT DETECTION ----------
 def is_bank_alert(email: dict) -> bool:
     sender = (email.get("From") or "").lower()
     subject = (email.get("Subject") or "").lower()
+    body = (email.get("Body") or "").lower()
 
-    bank_keywords = [
-        "hdfc",
-        "icici",
-        "sbi",
-        "axis",
-        "kotak",
-        "yes bank",
-        "transaction alert",
-        "spent",
-        "debit",
-    ]
+    bank_senders = ["hdfc", "icici", "axis", "sbi", "kotak"]
+    debit_words = ["debit", "spent", "transaction"]
 
-    return any(k in sender or k in subject for k in bank_keywords)
+    return (
+        any(b in sender for b in bank_senders)
+        and any(d in subject for d in debit_words)
+        and "swiggy" in body
+    )
 
 
+# ---------- MAIN ----------
 def extract_spend(email: dict, service):
     print("STEP 1 INPUT EMAIL SUBJECT:", email.get("Subject"))
     print("🔥🔥🔥 EXTRACT_SPEND FUNCTION CALLED 🔥🔥🔥")
@@ -57,35 +76,40 @@ def extract_spend(email: dict, service):
     category = detect_category(merchant)
     date = normalize_date(date_str)
 
-    def build_spend(amount):
-        return {
+    def build_spend(amount, is_alert=False):
+        spend = {
             "merchant": merchant,
             "category": category,
             "amount": round(float(amount), 2),
             "date": date,
             "source_id": source_id,
         }
+        if is_alert:
+            spend["is_alert"] = True
+        return spend
+
 
     # ================= SWIGGY ONLY =================
     if merchant == "Swiggy":
 
-        # 1️⃣ Bank / card alert (highest priority)
+        # 1️⃣ Bank alert (HIGHEST PRIORITY, alert-only)
         if is_bank_alert(email):
             amount = extract_amount(body) or extract_amount(subject)
             if amount:
-                return build_spend(amount)
+                return build_spend(amount, is_alert=True)
 
-        # 2️⃣ Swiggy email body (non-PDF)
-        amount = extract_amount(body)
+        # 2️⃣ Swiggy email body (correct total, multi-item safe)
+        amount = extract_swiggy_total_from_body(body)
         if amount:
             return build_spend(amount)
 
-        # 3️⃣ PDF fallback (last resort)
+        # 3️⃣ PDF fallback (last resort only)
         amount = extract_amount_from_pdf(email, service)
         if amount:
             return build_spend(amount)
 
         return None
+
 
     # ================= ALL OTHER MERCHANTS (ZOMATO UNCHANGED) =================
     amount = extract_amount(body) or extract_amount(subject)

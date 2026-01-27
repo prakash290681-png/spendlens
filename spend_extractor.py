@@ -49,14 +49,15 @@ def is_bank_alert(email: dict) -> bool:
     body = (email.get("Body") or "").lower()
 
     bank_senders = ["hdfc", "icici", "axis", "sbi", "kotak"]
-    debit_words = ["debit", "spent", "txn", "transaction"]
+
+    # IMPORTANT: debit words should be checked in BODY, not subject
+    debit_words = ["debit", "debited", "spent", "txn", "transaction"]
 
     return (
         any(b in sender for b in bank_senders)
-        and any(d in subject for d in debit_words)
-        and ("swiggy" in body or "bundl" in body)
+        and "swiggy" in body
+        and any(d in body for d in debit_words)
     )
-
 
 # ---------- MAIN ----------
 def extract_spend(email: dict, service):

@@ -100,12 +100,12 @@ def extract_spend(email: dict, service):
         # 2️⃣ Bank alert (card / wallet debit)
         if is_bank_alert(email):
             amount = extract_amount(subject) or extract_amount(body)
-            if amount and amount >=100:
+            if amount:
                 return build_spend(amount)
 
         # 3️⃣ Swiggy email body total (food orders)
         amount = extract_swiggy_total_from_body(body)
-        if amount:
+        if amount and amount >=100:
             return build_spend(amount)
 
         # 4️⃣ Instamart / Genie fallback (no PDF, no keywords)

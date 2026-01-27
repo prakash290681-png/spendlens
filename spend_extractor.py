@@ -22,16 +22,13 @@ def extract_swiggy_total_from_body(text: str):
         return None
 
     text = text.lower()
-    patterns = [
-        r"(order total|grand total|amount paid|total payable)[^\d₹]*₹?\s*([\d,]+(?:\.\d{1,2})?)"
-    ]
+    pattern = r"(order total|grand total|amount paid|total payable)[^\d₹]*₹?\s*([\d,]+(?:\.\d{1,2})?)"
 
-    totals = []
-    for pattern in patterns:
-        for m in re.finditer(pattern, text):
-            totals.append(float(m.group(2).replace(",", "")))
+    m = re.search(pattern, text)
+    if m:
+        return float(m.group(2).replace(",", ""))
 
-    return totals[-1] if totals else None
+    return None
 
 
 # ---------- SWIGGY FALLBACK (INSTAMART / GENIE) ----------
@@ -40,13 +37,7 @@ def extract_swiggy_fallback_amount(text: str):
         return None
 
     matches = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", text)
-    if not matches:
-        return None
-
-    amounts = [float(m.replace(",", "")) for m in matches]
-
-    # Ignore tips / retries / noise
-    amounts = [a for a in amounts if a >= 100]
+    amounts = [float(m.replace(",", "")) for m in matches if float(m.replace(",", "")) >= 100]
 
     return max(amounts) if amounts else None
 
@@ -63,7 +54,7 @@ def is_bank_alert(email: dict) -> bool:
     return (
         any(b in sender for b in bank_senders)
         and any(d in subject for d in debit_words)
-        and "swiggy" in body
+        and ("swiggy" in body or "bundl" in body)
     )
 
 
@@ -72,13 +63,11 @@ def extract_spend(email: dict, service):
     sender = email.get("From", "")
     subject = email.get("Subject", "")
     body = email.get("Body", "")
-    date_str = email.get("Date", "")
+    date = normalize_date(email.get("Date"))
     source_id = email.get("id") or email.get("Message-Id")
 
-    date = normalize_date(date_str)
-
     # =====================================================
-    # 1️⃣ BANK ALERTS — HANDLE FIRST (GLOBAL, ISOLATED)
+    # 1️⃣ BANK ALERTS (LOWEST PRIORITY)
     # =====================================================
     if is_bank_alert(email):
         amount = extract_amount(subject) or extract_amount(body)
@@ -90,9 +79,10 @@ def extract_spend(email: dict, service):
                 "date": date,
                 "source_id": source_id,
             }
+        return None
 
     # =====================================================
-    # 2️⃣ NORMAL MERCHANT FLOW
+    # 2️⃣ MERCHANT DETECTION
     # =====================================================
     merchant = (
         detect_merchant(sender)
@@ -114,20 +104,28 @@ def extract_spend(email: dict, service):
             "source_id": source_id,
         }
 
-    # ================= SWIGGY =================
+    # =====================================================
+    # 3️⃣ SWIGGY
+    # =====================================================
     if merchant == "Swiggy":
 
-        # PDF invoice = absolute truth
-        pdf_amount = extract_amount_from_pdf(email, service)
-        if pdf_amount:
-            return build_spend(pdf_amount)
+        # ---------- PDF (HIGHEST PRIORITY) ----------
+        pdf_data = extract_amount_from_pdf(email, service)
+        if pdf_data:
+            return {
+                "merchant": "Swiggy",
+                "category": "Food Delivery",
+                "amount": pdf_data["amount"],
+                "date": date,
+                "source_id": pdf_data.get("order_id") or source_id,
+            }
 
-        # Swiggy email body total (food orders)
-        amount = extract_swiggy_total_from_body(body)
-        if amount and amount >= 100:
-            return build_spend(amount)
+        # ---------- Swiggy email body ----------
+        body_total = extract_swiggy_total_from_body(body)
+        if body_total and body_total >= 100:
+            return build_spend(body_total)
 
-        # Instamart / Genie fallback
+        # ---------- Instamart / Genie fallback ----------
         fallback = (
             extract_swiggy_fallback_amount(body)
             or extract_swiggy_fallback_amount(subject)
@@ -137,23 +135,18 @@ def extract_spend(email: dict, service):
 
         return None
 
-    # ================= ZOMATO & OTHERS =================
+    # =====================================================
+    # 4️⃣ ZOMATO
+    # =====================================================
     if merchant == "Zomato":
-        spend_keywords = [
-            "paid",
-            "order total",
-            "amount paid",
-            "bill",
-            "invoice",
-            "you paid"
-        ]
+        keywords = ["paid", "order total", "amount paid", "invoice"]
 
         text = (subject + " " + body).lower()
-
-        if not any(k in text for k in spend_keywords):
+        if not any(k in text for k in keywords):
             return None
 
         amount = extract_amount(body) or extract_amount(subject)
         if amount:
             return build_spend(amount)
 
+    return None

@@ -105,7 +105,7 @@ def callback(request: Request):
                     db.query(Transaction)
                     .filter(
                         Transaction.merchant == "Swiggy",
-                        Transaction.date.cast(Date) == spend["date"].date()
+                        
                     )
                     .first()
                 )

@@ -65,7 +65,8 @@ def is_bank_alert(email: dict) -> bool:
     return (
         any(b in sender for b in bank_senders)
         and ("swiggy" in body or "swiggy" in email.get("snippet", "").lower())
-        and any(d in body for d in debit_words)
+        and any(d in (subject + " " + body) for d in debit_words)
+
     )
 
 # ---------- MAIN ----------
@@ -105,7 +106,7 @@ def extract_spend(email: dict, service):
         or "instamart" in (body or "").lower()
     ):
         merchant = "Swiggy"
-        
+
     if not merchant:
         return None
 

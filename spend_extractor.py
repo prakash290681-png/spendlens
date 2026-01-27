@@ -77,18 +77,18 @@ def extract_spend(email: dict, service):
     # ================= SWIGGY ONLY =================
     if merchant == "Swiggy":
 
-        # 1️⃣ Bank alert (HIGHEST priority)
+        # 1️⃣ Bank alert (card / bank SMS)
         if is_bank_alert(email, merchant):
             amount = extract_amount(subject) or extract_amount(body)
             if amount:
                 return build_spend(amount)
 
-        # 2️⃣ Swiggy email BODY total (preferred over PDF)
+        # 2️⃣ Swiggy email body — TOTAL ONLY (never item prices)
         amount = extract_swiggy_total_from_body(body)
         if amount:
             return build_spend(amount)
 
-        # 3️⃣ PDF fallback (last resort only)
+        # 3️⃣ PDF fallback — ALWAYS
         amount = extract_amount_from_pdf(email, service)
         if amount:
             return build_spend(amount)

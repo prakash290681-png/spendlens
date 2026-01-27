@@ -1,15 +1,23 @@
-def detect_merchant(text: str | None):
+def detect_merchant(text: str):
     if not text:
-        return "Unknown"
+        return None
 
     text = text.lower()
 
-    if "swiggy" in text:
-        return "Swiggy"
+    # Zomato
     if "zomato" in text:
         return "Zomato"
 
-    return "Unknown"
+    # Swiggy (food, instamart, bank alerts)
+    if (
+        "swiggy" in text
+        or "instamart" in text
+        or "bundl" in text
+    ):
+        return "Swiggy"
+
+    return None
+
 
 def detect_category(merchant: str) -> str:
     if merchant in ["Zomato", "Swiggy"]:

@@ -138,8 +138,22 @@ def extract_spend(email: dict, service):
         return None
 
     # ================= ZOMATO & OTHERS =================
-    amount = extract_amount(body) or extract_amount(subject)
-    if amount:
-        return build_spend(amount)
+    if merchant == "Zomato":
+        spend_keywords = [
+            "paid",
+            "order total",
+            "amount paid",
+            "bill",
+            "invoice",
+            "you paid"
+        ]
 
-    return None
+        text = (subject + " " + body).lower()
+
+        if not any(k in text for k in spend_keywords):
+            return None
+
+        amount = extract_amount(body) or extract_amount(subject)
+        if amount:
+            return build_spend(amount)
+

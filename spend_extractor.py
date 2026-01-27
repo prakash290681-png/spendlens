@@ -48,7 +48,9 @@ def extract_spend(email: dict, service):
         if pdf_amount is not None:
             amount = pdf_amount
 
-        
+        else:
+            print("🚫 SWIGGY WITHOUT PDF — SKIPPING")
+            return None
 
         print("📄 SWIGGY PDF FALLBACK CALLED — amount so far:", amount)
 

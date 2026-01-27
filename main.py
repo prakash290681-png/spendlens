@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from auth import router as auth_router
 from database import engine, SessionLocal
 from models import Base, Transaction
+from admin import router as admin_router
+
 
 MONTHLY_BUDGETS = {
     "Food Delivery": 2000
@@ -18,6 +20,7 @@ MONTHLY_BUDGETS = {
 
 # --- App setup ---
 app = FastAPI()
+app.include_router(admin_router)
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
@@ -179,3 +182,4 @@ def monthly_alerts():
         "by_category": by_category,
         "by_merchant": by_merchant
     }
+

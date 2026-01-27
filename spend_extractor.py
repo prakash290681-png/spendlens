@@ -1,7 +1,8 @@
+import re
 from utils import detect_merchant, detect_category
 from date_utils import normalize_date
 from pdf_utils import extract_amount_from_pdf
-import re
+
 
 def extract_amount(text: str):
     if not text:
@@ -20,16 +21,12 @@ def extract_amount(text: str):
             if num_match:
                 return float(num_match.group().replace(",", ""))
 
-
     return None
-
-
 
 
 def extract_spend(email: dict, service):
     print("STEP 1 INPUT EMAIL SUBJECT:", email.get("Subject"))
     print("🔥🔥🔥 EXTRACT_SPEND FUNCTION CALLED 🔥🔥🔥")
-
 
     sender = email.get("From", "")
     subject = email.get("Subject", "")
@@ -40,23 +37,23 @@ def extract_spend(email: dict, service):
     merchant = detect_merchant(sender)
     category = detect_category(merchant)
 
-    amount = extract_amount(body) or extract_amount(subject)
+    amount = None
 
-    # 🔒 Swiggy: ALWAYS trust PDF invoice total if available
+    # 🔒 SWIGGY: PDF ONLY — NO BODY / SUBJECT EXTRACTION
     if merchant == "Swiggy":
         pdf_amount = extract_amount_from_pdf(email, service)
-        if pdf_amount is not None:
-            amount = pdf_amount
-
-        else:
+        if pdf_amount is None:
             print("🚫 SWIGGY WITHOUT PDF — SKIPPING")
             return None
+        amount = pdf_amount
 
-        print("📄 SWIGGY PDF FALLBACK CALLED — amount so far:", amount)
+    # ✅ ALL OTHER MERCHANTS (ZOMATO UNCHANGED)
+    else:
+        amount = extract_amount(body) or extract_amount(subject)
 
     if amount is not None:
         amount = round(float(amount), 2)
-    
+
     date = normalize_date(date_str)
 
     spend = {

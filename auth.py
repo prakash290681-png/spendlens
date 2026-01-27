@@ -11,7 +11,6 @@ from models import Transaction
 from date_utils import normalize_date
 from sqlalchemy import Date
 
-
 router = APIRouter()
 
 TARGET_YEAR = 2026
@@ -64,6 +63,11 @@ def callback(request: Request):
 
     try:
         for email in emails:
+
+            # ---------- SKIP GMAIL DRAFTS ----------
+            if "DRAFT" in email.get("labelIds", []):
+                print(">>> SKIP DRAFT EMAIL")
+                continue
             # ---------- HARD DATE FILTER ----------
             email_date = normalize_date(email.get("Date"))
             if not email_date:
@@ -130,6 +134,8 @@ def callback(request: Request):
             except Exception as e:
                 print("DB ERROR:", e)
                 db.rollback()
+
+
 
     finally:
         db.close()

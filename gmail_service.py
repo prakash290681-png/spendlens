@@ -54,8 +54,7 @@ def fetch_recent_emails(access_token: str, return_service=False):
 
     results = service.users().messages().list(
         userId="me",
-        q=query,
-        maxResults=100
+        maxResults=50
     ).execute()
 
     messages = results.get("messages", [])

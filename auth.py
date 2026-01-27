@@ -42,7 +42,7 @@ def login():
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     auth_url, _ = flow.authorization_url(
         access_type="offline",
-        prompt="consent"
+        prompt="consent",
     )
     return RedirectResponse(auth_url)
 
@@ -58,7 +58,7 @@ def callback(request: Request):
 
     emails, service = fetch_recent_emails(
         creds.token,
-        return_service=True
+        return_service=True,
     )
 
     db = SessionLocal()
@@ -86,49 +86,60 @@ def callback(request: Request):
                 continue
 
             email_date = email_date.astimezone(timezone.utc)
-            if email_date.year != TARGET_YEAR or email_date.month != TARGET_MONTH:
+            if (
+                email_date.year != TARGET_YEAR
+                or email_date.month != TARGET_MONTH
+            ):
                 continue
 
-            # ---------- PARSE ----------
+            # ---------- EXTRACT ----------
             spend = extract_spend(email, service)
             print("DEBUG spend:", spend)
 
-            if not spend or spend.get("amount") is None or spend["amount"] <= 0:
+            if not spend:
+                continue
+
+            if spend.get("amount") is None or spend["amount"] <= 0:
                 continue
 
             # =====================================================
-            # ✅ SWIGGY DEDUPE (amount + calendar date)
+            # ✅ FINAL DEDUPE LOGIC
             # =====================================================
+
             if spend["merchant"] == "Swiggy":
+                # ONE Swiggy row per (date + amount), no matter the source
                 existing = (
                     db.query(Transaction)
                     .filter(
                         Transaction.merchant == "Swiggy",
                         Transaction.amount == spend["amount"],
-                        Transaction.date.cast(Date) == spend["date"].date()
+                        Transaction.date.cast(Date) == spend["date"].date(),
                     )
                     .first()
                 )
 
                 if existing:
                     print(
-                        ">>> DUPLICATE SWIGGY (amount+date) — SKIPPING:",
-                        spend
+                        ">>> DUPLICATE SWIGGY (date + amount) — SKIPPING:",
+                        spend,
                     )
                     continue
 
-            # =====================================================
-            # OTHER MERCHANTS (SOURCE ID DEDUPE)
-            # =====================================================
             else:
+                # Non-Swiggy: strict source_id dedupe
                 existing = (
                     db.query(Transaction)
-                    .filter(Transaction.source_id == spend["source_id"])
+                    .filter(
+                        Transaction.source_id == spend.get("source_id")
+                    )
                     .first()
                 )
 
                 if existing:
-                    print(">>> DUPLICATE SOURCE ID — SKIPPING")
+                    print(
+                        ">>> DUPLICATE SOURCE ID — SKIPPING:",
+                        spend.get("source_id"),
+                    )
                     continue
 
             # ---------- INSERT ----------

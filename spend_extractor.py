@@ -52,7 +52,7 @@ def extract_swiggy_fallback_amount(text: str):
 
 
 # ---------- BANK ALERT ----------
-def is_bank_alert(email: dict, merchant: str) -> bool:
+def is_bank_alert(email: dict) -> bool:
     sender = (email.get("From") or "").lower()
     subject = (email.get("Subject") or "").lower()
     body = (email.get("Body") or "").lower()
@@ -98,9 +98,9 @@ def extract_spend(email: dict, service):
             return build_spend(pdf_amount)
 
         # 2️⃣ Bank alert (card / wallet debit)
-        if is_bank_alert(email, merchant):
+        if is_bank_alert(email):
             amount = extract_amount(subject) or extract_amount(body)
-            if amount:
+            if amount and amount >=100:
                 return build_spend(amount)
 
         # 3️⃣ Swiggy email body total (food orders)

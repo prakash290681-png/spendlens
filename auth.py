@@ -94,6 +94,12 @@ def callback(request: Request):
 
             # ---------- EXTRACT ----------
             spend = extract_spend(email, service)
+
+            if spend and spend.get("date"):
+                spend["date"] = spend["date"].astimezone(timezone.utc).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+
             print("DEBUG spend:", spend)
 
             if not spend:

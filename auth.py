@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 import os
@@ -9,7 +9,6 @@ from spend_extractor import extract_spend
 from database import SessionLocal
 from models import Transaction
 from date_utils import normalize_date
-from sqlalchemy import Date
 
 router = APIRouter()
 
@@ -64,78 +63,65 @@ def callback(request: Request):
     try:
         for email in emails:
 
-            # ---------- SKIP GMAIL DRAFTS ----------
+            # ---------- SKIP DRAFTS ----------
             if "DRAFT" in email.get("labelIds", []):
-                print(">>> SKIP DRAFT EMAIL")
                 continue
-            # ---------- HARD DATE FILTER ----------
+
+            # ---------- DATE FILTER ----------
             email_date = normalize_date(email.get("Date"))
             if not email_date:
                 continue
 
             email_date = email_date.astimezone(timezone.utc)
-
-            if (
-                email_date.year != TARGET_YEAR
-                or email_date.month != TARGET_MONTH
-            ):
-                print(">>> SKIP EMAIL BEFORE PARSING:", email_date)
+            if email_date.year != TARGET_YEAR or email_date.month != TARGET_MONTH:
                 continue
 
             # ---------- PARSE ----------
             spend = extract_spend(email, service)
             print("DEBUG spend:", spend)
 
-            if spend is None:
-                print(">>> SKIP: spend extraction failed")
+            if not spend or spend["amount"] <= 0:
                 continue
 
-            if spend.get("amount") is None or spend["amount"] <= 0:
-                print(">>> SKIP: invalid amount")
-                continue
-
-            if spend.get("merchant") == "Unknown":
-                print(">>> SKIP: unknown merchant")
-                continue
-
-            # --- DUPLICATE CHECK ---
-
+            # =====================================================
+            # SWIGGY DEDUPE (FINAL)
+            # =====================================================
             if spend["merchant"] == "Swiggy":
-                existing = (
-                    db.query(Transaction)
-                    .filter(
-                        Transaction.merchant == "Swiggy",
-                        
-                    )
-                    .first()
-                )
 
-                if existing:
-                    print(">>> SWIGGY DUPLICATE (date-level) — SKIPPING:", spend)
-                    continue
+                # PDF order-level dedupe ONLY
+                if spend.get("source_id") and spend["source_id"].isdigit():
+                    existing = (
+                        db.query(Transaction)
+                        .filter(
+                            Transaction.merchant == "Swiggy",
+                            Transaction.source_id == spend["source_id"]
+                        )
+                        .first()
+                    )
+                    if existing:
+                        print(">>> DUPLICATE SWIGGY PDF — SKIPPING")
+                        continue
+
+            # =====================================================
+            # OTHER MERCHANTS
+            # =====================================================
             else:
                 existing = (
                     db.query(Transaction)
                     .filter(Transaction.source_id == spend["source_id"])
                     .first()
                 )
-
                 if existing:
-                    print(">>> DUPLICATE TRANSACTION — SKIPPING:", spend["source_id"])
                     continue
 
-
             # ---------- INSERT ----------
-            tx = Transaction(**spend)
             try:
-                db.add(tx)
+                db.add(Transaction(**spend))
                 db.commit()
                 inserted += 1
             except Exception as e:
                 print("DB ERROR:", e)
                 db.rollback()
-
-
 
     finally:
         db.close()

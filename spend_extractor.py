@@ -65,14 +65,13 @@ def extract_spend(email: dict, service):
     category = detect_category(merchant)
     date = normalize_date(date_str)
 
-    def build_spend(amount, is_alert=False):
+    def build_spend(amount):
         return {
             "merchant": merchant,
             "category": category,
             "amount": round(float(amount), 2),
             "date": date,
             "source_id": source_id,
-            "is_alert": is_alert,
         }
 
     # ================= SWIGGY ONLY =================
@@ -82,7 +81,7 @@ def extract_spend(email: dict, service):
         if is_bank_alert(email, merchant):
             amount = extract_amount(subject) or extract_amount(body)
             if amount:
-                return build_spend(amount, is_alert=True)
+                return build_spend(amount)
 
         # 2️⃣ Swiggy email BODY total (preferred over PDF)
         amount = extract_swiggy_total_from_body(body)

@@ -13,17 +13,15 @@ def extract_amount(text: str):
     if not matches:
         return None
 
-    # ⚠️ Generic extractor should take FIRST (used by Zomato)
     return float(matches[0].replace(",", ""))
 
 
-# ---------- SWIGGY BODY TOTAL ----------
+# ---------- SWIGGY BODY TOTAL (KEYWORDS) ----------
 def extract_swiggy_total_from_body(text: str):
     if not text:
         return None
 
     text = text.lower()
-
     patterns = [
         r"(order total|grand total|amount paid|total payable)[^\d₹]*₹?\s*([\d,]+(?:\.\d{1,2})?)"
     ]
@@ -33,8 +31,24 @@ def extract_swiggy_total_from_body(text: str):
         for m in re.finditer(pattern, text):
             totals.append(float(m.group(2).replace(",", "")))
 
-    # ✅ LAST total = full order value (fixes ₹483, ₹783)
     return totals[-1] if totals else None
+
+
+# ---------- SWIGGY FALLBACK (INSTAMART / GENIE) ----------
+def extract_swiggy_fallback_amount(text: str):
+    if not text:
+        return None
+
+    matches = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", text)
+    if not matches:
+        return None
+
+    amounts = [float(m.replace(",", "")) for m in matches]
+
+    # ignore noise (tips / retries)
+    amounts = [a for a in amounts if a >= 100]
+
+    return max(amounts) if amounts else None
 
 
 # ---------- BANK ALERT ----------
@@ -77,25 +91,33 @@ def extract_spend(email: dict, service):
     # ================= SWIGGY ONLY =================
     if merchant == "Swiggy":
 
-        # 1️⃣ Bank alert (card / bank SMS)
+        # 1️⃣ PDF invoice — absolute source of truth
+        pdf_amount = extract_amount_from_pdf(email, service)
+        if pdf_amount:
+            return build_spend(pdf_amount)
+
+        # 2️⃣ Bank alert (card / wallet debit)
         if is_bank_alert(email, merchant):
             amount = extract_amount(subject) or extract_amount(body)
             if amount:
                 return build_spend(amount)
 
-        # 2️⃣ Swiggy email body — TOTAL ONLY (never item prices)
+        # 3️⃣ Swiggy email body total (food orders)
         amount = extract_swiggy_total_from_body(body)
         if amount:
             return build_spend(amount)
 
-        # 3️⃣ PDF fallback — ALWAYS
-        amount = extract_amount_from_pdf(email, service)
-        if amount:
-            return build_spend(amount)
+        # 4️⃣ Instamart / Genie fallback (no PDF, no keywords)
+        fallback = (
+            extract_swiggy_fallback_amount(body)
+            or extract_swiggy_fallback_amount(subject)
+        )
+        if fallback:
+            return build_spend(fallback)
 
         return None
 
-    # ================= ALL OTHER MERCHANTS (ZOMATO UNTOUCHED) =================
+    # ================= ALL OTHER MERCHANTS =================
     amount = extract_amount(body) or extract_amount(subject)
     if amount:
         return build_spend(amount)

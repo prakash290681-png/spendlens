@@ -59,7 +59,8 @@ def is_bank_alert(email: dict) -> bool:
     bank_senders = ["hdfc", "icici", "axis", "sbi", "kotak"]
 
     # IMPORTANT: debit words should be checked in BODY, not subject
-    debit_words = ["debit", "debited", "spent", "txn", "transaction"]
+    debit_words = ["debit", "debited", "spent", "txn", "transaction", "has been debited"]
+
 
     return (
         any(b in sender for b in bank_senders)
@@ -98,7 +99,13 @@ def extract_spend(email: dict, service):
         or detect_merchant(subject)
         or detect_merchant(body)
     )
-
+    # --- FIX 2: Force Instamart to Swiggy ---
+    if (
+        "instamart" in (subject or "").lower()
+        or "instamart" in (body or "").lower()
+    ):
+        merchant = "Swiggy"
+        
     if not merchant:
         return None
 
@@ -112,7 +119,7 @@ def extract_spend(email: dict, service):
             "date": date,
             "source_id": source_id,
         }
-
+    
     # =====================================================
     # 3️⃣ SWIGGY
     # =====================================================

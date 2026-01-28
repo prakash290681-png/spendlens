@@ -10,6 +10,8 @@ from database import SessionLocal
 from models import Transaction
 from date_utils import normalize_date
 
+from sqlalchemy import Date   # ✅ MISSING IMPORT (IMPORTANT)
+
 router = APIRouter()
 
 TARGET_YEAR = 2026
@@ -47,10 +49,7 @@ def login():
 
 @router.get("/auth/callback")
 def callback(request: Request):
-    print("🔥 RUNNING AUTH.PY VERSION 2026-01-FINAL")
-
-    # ✅ PER-RUN DEDUPE (CRITICAL)
-    seen_swiggy = set()
+    print("🔥 RUNNING AUTH.PY VERSION 2026-01-FINAL-STABLE")
 
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
@@ -68,19 +67,6 @@ def callback(request: Request):
     try:
         for email in emails:
 
-            # ---------- SKIP DRAFTS ----------
-            if "DRAFT" in email.get("labelIds", []):
-                continue
-
-            print(
-                "📩 EMAIL:",
-                email.get("Subject"),
-                "| DATE:",
-                email.get("Date"),
-                "| LABELS:",
-                email.get("labelIds"),
-            )
-
             # ---------- DATE FILTER ----------
             email_date = normalize_date(email.get("Date"))
             if not email_date:
@@ -97,7 +83,7 @@ def callback(request: Request):
             if not spend or spend.get("amount") is None or spend["amount"] <= 0:
                 continue
 
-            # ---------- NORMALIZE DATE ----------
+            # ---------- NORMALIZE DATE (DAY LEVEL) ----------
             spend["date"] = (
                 spend["date"]
                 .astimezone(timezone.utc)
@@ -105,37 +91,60 @@ def callback(request: Request):
             )
 
             # =====================================================
-            # ✅ FINAL, BULLETPROOF DEDUPE
+            # ✅ FINAL, CORRECT DEDUPE LOGIC
             # =====================================================
 
             if spend["merchant"] == "Swiggy":
-                # ONE Swiggy transaction per (date + amount) PER RUN
-                key = (
-                    spend["merchant"],
-                    spend["date"].date(),
-                    float(spend["amount"]),
-                )
 
-                if key in seen_swiggy:
-                    print(">>> DUPLICATE SWIGGY (IN-RUN) — SKIPPING:", spend)
-                    continue
+                # 1️⃣ Bank alert should NEVER duplicate a Swiggy order email
+                if spend.get("source") == "bank_alert":
+                    existing_order = (
+                        db.query(Transaction)
+                        .filter(
+                            Transaction.merchant == "Swiggy",
+                            Transaction.amount == spend["amount"],
+                            Transaction.date.cast(Date) == spend["date"].date(),
+                            Transaction.source == "swiggy_email",
+                        )
+                        .first()
+                    )
 
-                seen_swiggy.add(key)
+                    if existing_order:
+                        print(
+                            ">>> BANK ALERT SKIPPED (order email exists):",
+                            spend,
+                        )
+                        continue
 
-            else:
-                # Non-Swiggy: strict source_id dedupe
+                # 2️⃣ Absolute safety: only ONE Swiggy row per (date + amount)
                 existing = (
                     db.query(Transaction)
-                    .filter(Transaction.source_id == spend.get("source_id"))
+                    .filter(
+                        Transaction.merchant == "Swiggy",
+                        Transaction.amount == spend["amount"],
+                        Transaction.date.cast(Date) == spend["date"].date(),
+                    )
                     .first()
                 )
 
                 if existing:
-                    print(
-                        ">>> DUPLICATE SOURCE ID — SKIPPING:",
-                        spend.get("source_id"),
-                    )
+                    print(">>> DUPLICATE SWIGGY — SKIPPING:", spend)
                     continue
+
+            else:
+                # ---------- NON-SWIGGY ----------
+                if spend.get("source_id"):
+                    existing = (
+                        db.query(Transaction)
+                        .filter(Transaction.source_id == spend["source_id"])
+                        .first()
+                    )
+                    if existing:
+                        print(
+                            ">>> DUPLICATE SOURCE_ID — SKIPPING:",
+                            spend["source_id"],
+                        )
+                        continue
 
             # ---------- INSERT ----------
             try:

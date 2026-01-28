@@ -78,6 +78,22 @@ def callback(request: Request):
 
             # ---------- EXTRACT ----------
             spend = extract_spend(email, service)
+            # 🚫 BLOCK Swiggy bank alerts if order email exists
+            if spend and spend["merchant"] == "Swiggy" and spend.get("source") == "bank_alert":
+                existing_email = (
+                    db.query(Transaction)
+                    .filter(
+                        Transaction.merchant == "Swiggy",
+                        Transaction.amount == spend["amount"],
+                        Transaction.date.cast(Date) == spend["date"].date(),
+                    )
+                    .first()
+                )
+
+                if existing_email:
+                    print("🚫 SKIPPING Swiggy bank alert (order email already exists)")
+                    continue
+
             print("DEBUG spend:", spend)
 
             if not spend or spend.get("amount") is None or spend["amount"] <= 0:

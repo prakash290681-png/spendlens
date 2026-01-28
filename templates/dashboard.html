@@ -26,61 +26,53 @@
 <div class="card" id="alerts">Loading alerts...</div>
 
 <script>
-async function loadSummary() {
-    const res = await fetch("/summary/monthly");
-    const data = await res.json();
+(async function () {
+  try {
+    // ---- SUMMARY ----
+    const summaryRes = await fetch("/summary/monthly");
+    const summary = await summaryRes.json();
 
-    const div = document.getElementById("summary");
-
-    let html = `
-        <h3>Total Spend (This Month)</h3>
-        <p style="font-size:24px;"><strong>₹ ${data.total_spent}</strong></p>
+    document.getElementById("summary").innerHTML = `
+      <h3>Total Spend</h3>
+      <p style="font-size:24px;"><strong>₹${summary.total_spent}</strong></p>
+      <ul>
+        ${summary.by_category.map(c =>
+          `<li>${c.category}: ₹${c.total}</li>`
+        ).join("")}
+      </ul>
     `;
 
-    if (data.by_category && data.by_category.length > 0) {
-        html += "<h4>Category Breakdown</h4><ul>";
-        data.by_category.forEach(item => {
-            html += `<li>${item.category}: ₹ ${item.total}</li>`;
-        });
-        html += "</ul>";
-    }
+    // ---- ALERTS ----
+    const alertsRes = await fetch("/alerts/monthly");
+    const alertsData = await alertsRes.json();
 
-    if (data.by_merchant && data.by_merchant.length > 0) {
-        html += "<h4>Merchant Breakdown</h4><ul>";
-        data.by_merchant.forEach(item => {
-            html += `<li>${item.merchant}: ₹ ${item.total}</li>`;
-        });
-        html += "</ul>";
-    }
-
-    div.innerHTML = html;
-}
-
-async function loadAlerts() {
-    const res = await fetch("/alerts/monthly");
-    const data = await res.json();
-
-    const alertsDiv = document.getElementById("alerts");
-
-    if (!data.alerts || data.alerts.length === 0) {
-        alertsDiv.innerHTML = "<p>✅ No budget alerts this month</p>";
-        return;
-    }
-
-    alertsDiv.innerHTML = data.alerts.map(a => `
-        <div style="
-            padding: 10px;
-            margin-bottom: 10px;
-            border-left: 6px solid ${a.status === "exceeded" ? "red" : "orange"};
-            background: #f9f9f9;
-        ">
+    if (!alertsData.alerts || alertsData.alerts.length === 0) {
+      document.getElementById("alerts").innerHTML =
+        "<p>✅ No budget alerts</p>";
+    } else {
+      document.getElementById("alerts").innerHTML = `
+        <h3>⚠️ Budget Alerts</h3>
+        ${alertsData.alerts.map(a => `
+          <div style="
+            margin-bottom:10px;
+            padding:10px;
+            border-left:6px solid ${a.status === "exceeded" ? "red" : "orange"};
+            background:#f9f9f9;
+          ">
             <strong>${a.category}</strong><br/>
             Spent ₹${a.spent} / ₹${a.limit}<br/>
             ${a.percent}% used
-        </div>
-    `).join("");
-}
+          </div>
+        `).join("")}
+      `;
+    }
 
-loadSummary();
-loadAlerts();
+  } catch (err) {
+    console.error(err);
+    document.getElementById("alerts").innerHTML =
+      "<p>⚠️ Failed to load alerts</p>";
+  }
+})();
 </script>
+</body>
+</html>

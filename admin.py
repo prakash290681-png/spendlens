@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 from database import SessionLocal
 from models import Transaction
-from sqlalchemy import func, Date
+from sqlalchemy import Date
+from datetime import timezone
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -9,8 +10,8 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.post("/cleanup-swiggy")
 def cleanup_swiggy():
     """
-    Remove duplicate Swiggy rows.
-    Rule: keep ONE row per (date + amount)
+    Remove duplicate Swiggy rows:
+    rule = same UTC date + same amount
     """
     db = SessionLocal()
     deleted = 0
@@ -19,25 +20,30 @@ def cleanup_swiggy():
         rows = (
             db.query(Transaction)
             .filter(Transaction.merchant == "Swiggy")
-            .order_by(Transaction.date)
+            .order_by(Transaction.date, Transaction.id)
             .all()
         )
 
         seen = set()
-        
-        for row in rows:
-            key = (float(row.amount), row.date.date())
+
+        for tx in rows:
+            key = (
+                tx.date.astimezone(timezone.utc).date(),
+                round(float(tx.amount), 2),
+            )
 
             if key in seen:
-                db.delete(row)
+                db.delete(tx)
                 deleted += 1
             else:
                 seen.add(key)
+
         db.commit()
         return {
             "status": "ok",
-            "deleted_duplicates": deleted
+            "deleted_duplicates": deleted,
         }
+
     finally:
         db.close()
 
@@ -45,33 +51,38 @@ def cleanup_swiggy():
 @router.post("/cleanup-zomato")
 def cleanup_zomato():
     """
-    Optional: same dedupe for Zomato
+    Optional manual cleanup for Zomato
     """
     db = SessionLocal()
-
-    rows = (
-        db.query(Transaction)
-        .filter(Transaction.merchant == "Zomato")
-        .order_by(Transaction.date)
-        .all()
-    )
-
-    seen = set()
     deleted = 0
 
-    for row in rows:
-        key = (float(row.amount), row.date.date())
+    try:
+        rows = (
+            db.query(Transaction)
+            .filter(Transaction.merchant == "Zomato")
+            .order_by(Transaction.date, Transaction.id)
+            .all()
+        )
 
-        if key in seen:
-            db.delete(row)
-            deleted += 1
-        else:
-            seen.add(key)
+        seen = set()
 
-    db.commit()
-    db.close()
+        for tx in rows:
+            key = (
+                tx.date.astimezone(timezone.utc).date(),
+                round(float(tx.amount), 2),
+            )
 
-    return {
-        "merchant": "Zomato",
-        "deleted_duplicates": deleted
-    }
+            if key in seen:
+                db.delete(tx)
+                deleted += 1
+            else:
+                seen.add(key)
+
+        db.commit()
+        return {
+            "merchant": "Zomato",
+            "deleted_duplicates": deleted,
+        }
+
+    finally:
+        db.close()

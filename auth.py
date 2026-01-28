@@ -160,3 +160,36 @@ def callback(request: Request):
 
     print("TOTAL INSERTED:", inserted)
     return RedirectResponse("/dashboard")
+# =====================================================
+# 🔥 ONE-TIME CLEANUP — REMOVE EXISTING SWIGGY DUPLICATES
+# =====================================================
+from sqlalchemy import Date
+
+@router.post("/admin/cleanup-swiggy")
+def cleanup_swiggy():
+    db = SessionLocal()
+
+    rows = (
+        db.query(Transaction)
+        .filter(Transaction.merchant == "Swiggy")
+        .order_by(Transaction.date)
+        .all()
+    )
+
+    seen = set()
+    deleted = 0
+
+    for row in rows:
+        key = (row.amount, row.date.date())
+
+        if key in seen:
+            db.delete(row)
+            deleted += 1
+        else:
+            seen.add(key)
+
+    db.commit()
+    db.close()
+
+    return {"deleted_duplicates": deleted}
+

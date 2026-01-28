@@ -1,3 +1,7 @@
+# 🔒 STABLE BASELINE — Jan 2026
+# Swiggy/Zomato extraction verified
+# Do NOT modify without branch + tag
+
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow

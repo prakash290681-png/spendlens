@@ -43,55 +43,44 @@ async function loadSummary() {
             html += `<li>${item.category}: ₹ ${item.total}</li>`;
         });
         html += "</ul>";
-    
+    }
+
     if (data.by_merchant && data.by_merchant.length > 0) {
         html += "<h4>Merchant Breakdown</h4><ul>";
         data.by_merchant.forEach(item => {
-        html += `<li>${item.merchant}: ₹ ${item.total}</li>`;
-    });
-    html += "</ul>";
-}
-
+            html += `<li>${item.merchant}: ₹ ${item.total}</li>`;
+        });
+        html += "</ul>";
     }
 
     div.innerHTML = html;
 }
 
 async function loadAlerts() {
-  try {
     const res = await fetch("/alerts/monthly");
     const data = await res.json();
 
     const alertsDiv = document.getElementById("alerts");
 
     if (!data.alerts || data.alerts.length === 0) {
-      alertsDiv.innerHTML = "<p>✅ No budget alerts this month</p>";
-      return;
+        alertsDiv.innerHTML = "<p>✅ No budget alerts this month</p>";
+        return;
     }
 
     alertsDiv.innerHTML = data.alerts.map(a => `
-      <div style="
-        padding: 10px;
-        margin-bottom: 10px;
-        border-left: 6px solid ${a.status === "exceeded" ? "red" : "orange"};
-        background: #f9f9f9;
-      ">
-        <strong>${a.category}</strong><br/>
-        Spent ₹${a.spent} / ₹${a.limit}<br/>
-        ${a.percent}% used
-      </div>
+        <div style="
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 6px solid ${a.status === "exceeded" ? "red" : "orange"};
+            background: #f9f9f9;
+        ">
+            <strong>${a.category}</strong><br/>
+            Spent ₹${a.spent} / ₹${a.limit}<br/>
+            ${a.percent}% used
+        </div>
     `).join("");
-
-  } catch (err) {
-    document.getElementById("alerts").innerHTML =
-      "<p>⚠️ Failed to load alerts</p>";
-    console.error(err);
-  }
 }
 
 loadSummary();
 loadAlerts();
 </script>
-
-</body>
-</html>

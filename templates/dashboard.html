@@ -58,13 +58,25 @@ async function loadSummary() {
 }
 
 async function loadAlerts() {
-    const res = await fetch("/alerts/monthly");
+  const res = await fetch("/alerts/monthly");
+  const data = await res.json();
 
-    if (!res.ok) {
-        document.getElementById("alerts").innerHTML =
-            "<h3>Budget Alerts</h3>⚠️ Alerts not configured yet.";
-        return;
-    }
+  const container = document.getElementById("alerts");
+  container.innerHTML = "";
+
+  if (data.alerts.length === 0) {
+    container.innerHTML = "<p>✅ No budget alerts</p>";
+    return;
+  }
+
+  data.alerts.forEach(alert => {
+    container.innerHTML += `
+      <div style="color: red; font-weight: bold;">
+        ⚠ ${alert.category} exceeded budget!<br/>
+        Spent ₹${alert.spent} / Budget ₹${alert.limit}
+      </div>
+    `;
+  });
 }
 
 loadSummary();

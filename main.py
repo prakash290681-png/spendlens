@@ -26,33 +26,6 @@ Base.metadata.create_all(bind=engine)
 # Templates
 templates = Jinja2Templates(directory="templates")
 
-# -------------------------------------------------
-# TEMP ADMIN CLEANUP ENDPOINT (STEP 1 ONLY)
-# -------------------------------------------------
-@app.post("/admin/cleanup-zomato")
-def cleanup_zomato_spends():
-    db = SessionLocal()
-
-    bad_amounts = [499.0, 283.65]
-
-    deleted = (
-        db.query(Transaction)
-        .filter(
-            Transaction.merchant == "Zomato",
-            Transaction.amount.in_(bad_amounts),
-        )
-        .delete(synchronize_session=False)
-    )
-
-    db.commit()
-    db.close()
-
-    return {
-        "status": "ok",
-        "deleted_rows": deleted,
-    }
-
-
 @app.get("/admin/debug-zomato")
 def debug_zomato_rows():
     db = SessionLocal()
@@ -102,6 +75,41 @@ MONTHLY_BUDGETS = {
     "Food Delivery": 2000
 }
 
+
+def evaluate_monthly_budget_alerts(year: int, month: int):
+    db = SessionLocal()
+    alerts = []
+
+    try:
+        rows = (
+            db.query(
+                Transaction.category,
+                func.sum(Transaction.amount).label("total")
+            )
+            .filter(
+                func.extract("year", Transaction.date) == year,
+                func.extract("month", Transaction.date) == month,
+            )
+            .group_by(Transaction.category)
+            .all()
+        )
+
+        for category, total in rows:
+            budget = MONTHLY_BUDGETS.get(category)
+
+            if budget and total > budget:
+                alerts.append({
+                    "category": category,
+                    "spent": round(float(total), 2),
+                    "budget": budget,
+                    "exceeded_by": round(float(total - budget), 2)
+                })
+
+        return alerts
+
+    finally:
+        db.close()
+
 # -------------------------------------------------
 # Monthly summary
 # -------------------------------------------------
@@ -140,6 +148,11 @@ def monthly_summary():
 
     db.close()
 
+    alerts = evaluate_monthly_budget_alerts(
+    year=TARGET_YEAR,
+    month=TARGET_MONTH
+)
+
     return {
         "total_spent": round(total_spent, 2),
         "by_category": [
@@ -150,6 +163,7 @@ def monthly_summary():
             {"merchant": r.merchant, "total": round(r.total, 2)}
             for r in merchant_rows
         ],
+        "budget_alerts": alerts  
     }
 
 # -------------------------------------------------

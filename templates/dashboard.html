@@ -58,25 +58,35 @@ async function loadSummary() {
 }
 
 async function loadAlerts() {
-  const res = await fetch("/alerts/monthly");
-  const data = await res.json();
+  try {
+    const res = await fetch("/alerts/monthly");
+    const data = await res.json();
 
-  const container = document.getElementById("alerts");
-  container.innerHTML = "";
+    const alertsDiv = document.getElementById("alerts");
 
-  if (data.alerts.length === 0) {
-    container.innerHTML = "<p>✅ No budget alerts</p>";
-    return;
-  }
+    if (!data.alerts || data.alerts.length === 0) {
+      alertsDiv.innerHTML = "<p>✅ No budget alerts this month</p>";
+      return;
+    }
 
-  data.alerts.forEach(alert => {
-    container.innerHTML += `
-      <div style="color: red; font-weight: bold;">
-        ⚠ ${alert.category} exceeded budget!<br/>
-        Spent ₹${alert.spent} / Budget ₹${alert.limit}
+    alertsDiv.innerHTML = data.alerts.map(a => `
+      <div style="
+        padding: 10px;
+        margin-bottom: 10px;
+        border-left: 6px solid ${a.status === "exceeded" ? "red" : "orange"};
+        background: #f9f9f9;
+      ">
+        <strong>${a.category}</strong><br/>
+        Spent ₹${a.spent} / ₹${a.limit}<br/>
+        ${a.percent}% used
       </div>
-    `;
-  });
+    `).join("");
+
+  } catch (err) {
+    document.getElementById("alerts").innerHTML =
+      "<p>⚠️ Failed to load alerts</p>";
+    console.error(err);
+  }
 }
 
 loadSummary();

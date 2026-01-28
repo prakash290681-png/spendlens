@@ -53,7 +53,6 @@ def login():
 
 @router.get("/auth/callback")
 def callback(request: Request):
-    print("🔥 RUNNING AUTH.PY VERSION 2026-01-FINAL-STABLE")
 
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
@@ -97,8 +96,6 @@ def callback(request: Request):
                 if existing_email:
                     print("🚫 SKIPPING Swiggy bank alert (order email already exists)")
                     continue
-
-            print("DEBUG spend:", spend)
 
             if not spend or spend.get("amount") is None or spend["amount"] <= 0:
                 continue

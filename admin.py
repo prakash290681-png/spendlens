@@ -13,33 +13,33 @@ def cleanup_swiggy():
     Rule: keep ONE row per (date + amount)
     """
     db = SessionLocal()
-
-    rows = (
-        db.query(Transaction)
-        .filter(Transaction.merchant == "Swiggy")
-        .order_by(Transaction.date)
-        .all()
-    )
-
-    seen = set()
     deleted = 0
 
-    for row in rows:
-        key = (float(row.amount), row.date.date())
+    try:
+        rows = (
+            db.query(Transaction)
+            .filter(Transaction.merchant == "Swiggy")
+            .order_by(Transaction.date)
+            .all()
+        )
 
-        if key in seen:
-            db.delete(row)
-            deleted += 1
-        else:
-            seen.add(key)
+        seen = set()
+        
+        for row in rows:
+            key = (float(row.amount), row.date.date())
 
-    db.commit()
-    db.close()
-
-    return {
-        "merchant": "Swiggy",
-        "deleted_duplicates": deleted
-    }
+            if key in seen:
+                db.delete(row)
+                deleted += 1
+            else:
+                seen.add(key)
+        db.commit()
+        return {
+            "status": "ok",
+            "deleted_duplicates": deleted
+        }
+    finally:
+        db.close()
 
 
 @router.post("/cleanup-zomato")

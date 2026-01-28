@@ -10,8 +10,6 @@ from database import SessionLocal
 from models import Transaction
 from date_utils import normalize_date
 
-from sqlalchemy import Date
-
 router = APIRouter()
 
 TARGET_YEAR = 2026
@@ -51,6 +49,9 @@ def login():
 def callback(request: Request):
     print("🔥 RUNNING AUTH.PY VERSION 2026-01-FINAL")
 
+    # ✅ PER-RUN DEDUPE (CRITICAL)
+    seen_swiggy = set()
+
     flow = create_flow()
     flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     flow.fetch_token(authorization_response=str(request.url))
@@ -86,58 +87,46 @@ def callback(request: Request):
                 continue
 
             email_date = email_date.astimezone(timezone.utc)
-            if (
-                email_date.year != TARGET_YEAR
-                or email_date.month != TARGET_MONTH
-            ):
+            if email_date.year != TARGET_YEAR or email_date.month != TARGET_MONTH:
                 continue
 
             # ---------- EXTRACT ----------
             spend = extract_spend(email, service)
-
-            if spend and spend.get("date"):
-                spend["date"] = spend["date"].astimezone(timezone.utc).replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                )
-
             print("DEBUG spend:", spend)
 
-            if not spend:
+            if not spend or spend.get("amount") is None or spend["amount"] <= 0:
                 continue
 
-            if spend.get("amount") is None or spend["amount"] <= 0:
-                continue
+            # ---------- NORMALIZE DATE ----------
+            spend["date"] = (
+                spend["date"]
+                .astimezone(timezone.utc)
+                .replace(hour=0, minute=0, second=0, microsecond=0)
+            )
 
             # =====================================================
-            # ✅ FINAL DEDUPE LOGIC
+            # ✅ FINAL, BULLETPROOF DEDUPE
             # =====================================================
 
             if spend["merchant"] == "Swiggy":
-                # ONE Swiggy row per (date + amount), no matter the source
-                existing = (
-                    db.query(Transaction)
-                    .filter(
-                        Transaction.merchant == "Swiggy",
-                        Transaction.amount == spend["amount"],
-                        Transaction.date.cast(Date) == spend["date"].date(),
-                    )
-                    .first()
+                # ONE Swiggy transaction per (date + amount) PER RUN
+                key = (
+                    spend["merchant"],
+                    spend["date"].date(),
+                    float(spend["amount"]),
                 )
 
-                if existing:
-                    print(
-                        ">>> DUPLICATE SWIGGY (date + amount) — SKIPPING:",
-                        spend,
-                    )
+                if key in seen_swiggy:
+                    print(">>> DUPLICATE SWIGGY (IN-RUN) — SKIPPING:", spend)
                     continue
+
+                seen_swiggy.add(key)
 
             else:
                 # Non-Swiggy: strict source_id dedupe
                 existing = (
                     db.query(Transaction)
-                    .filter(
-                        Transaction.source_id == spend.get("source_id")
-                    )
+                    .filter(Transaction.source_id == spend.get("source_id"))
                     .first()
                 )
 

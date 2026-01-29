@@ -11,7 +11,8 @@
 </head>
 <body>
 
-<h2 style="color:red;">DASHBOARD VERSION: 2026-01-ALERTS-FIX</h2>
+<h2 style="color:red;">DASHBOARD VERSION: FORCE-RELOAD-TEST</h2>
+
 
 <h1>SpendLens</h1>
 <p>Your spending summary (current month)</p>
@@ -21,47 +22,7 @@
 
 <!-- DASHBOARD VERSION: 2026-01-SINGLE-SCRIPT -->
 
-<script>
-async function loadDashboard() {
-  console.log("🚀 Dashboard loading started");
-
-  // ---------- SUMMARY ----------
-  try {
-    console.log("➡️ Fetching summary...");
-    const summaryRes = await fetch("/summary/monthly");
-    console.log("⬅️ Summary response status:", summaryRes.status);
-
-    const text = await summaryRes.text();
-    console.log("📦 Summary raw response:", text);
-
-    const summary = JSON.parse(text);
-
-    document.getElementById("summary").innerHTML = "✅ Summary loaded";
-  } catch (e) {
-    console.error("❌ Summary error:", e);
-    document.getElementById("summary").innerHTML = "⚠️ Summary failed";
-  }
-
-  // ---------- ALERTS ----------
-  try {
-    console.log("➡️ Fetching alerts...");
-    const alertsRes = await fetch("/alerts/monthly");
-    console.log("⬅️ Alerts response status:", alertsRes.status);
-
-    const text = await alertsRes.text();
-    console.log("📦 Alerts raw response:", text);
-
-    const alertsData = JSON.parse(text);
-
-    document.getElementById("alerts").innerHTML = "✅ Alerts loaded";
-  } catch (e) {
-    console.error("❌ Alerts error:", e);
-    document.getElementById("alerts").innerHTML = "⚠️ Alerts failed";
-  }
-}
-
-document.addEventListener("DOMContentLoaded", loadDashboard);
-</script>
+<script src="/static/dashboard.js"></script>
 
 </body>
 </html>

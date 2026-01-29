@@ -1,21 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SpendLens Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-        .card {
-            border: 1px solid #ddd;
-            padding: 16px;
-            margin-top: 16px;
-            width: 500px;
-        }
-        .warning { color: orange; }
-        .exceeded { color: red; }
-    </style>
+  <title>SpendLens Dashboard</title>
+  <style>
+    body { font-family: Arial; margin: 40px; }
+    .card { border: 1px solid #ddd; padding: 16px; margin-top: 16px; width: 500px; }
+    .exceeded { color: red; }
+    .warning { color: orange; }
+  </style>
 </head>
 <body>
 
@@ -34,10 +26,11 @@ async function loadDashboard() {
   document.getElementById("summary").innerHTML = `
     <h3>Total Spend</h3>
     <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+
     <h4>By Merchant</h4>
     <ul>
       ${summary.by_merchant.map(m =>
-        `<li>${m.merchant}: ₹${m.total}</li>`
+        `<li>${m.merchant}: ₹ ${m.total}</li>`
       ).join("")}
     </ul>
   `;
@@ -49,7 +42,7 @@ async function loadDashboard() {
   const alertsDiv = document.getElementById("alerts");
 
   if (!alertsData.alerts || alertsData.alerts.length === 0) {
-    alertsDiv.innerHTML = "<h3>✅ No budget alerts</h3>";
+    alertsDiv.innerHTML = "<p>✅ No budget alerts</p>";
     return;
   }
 
@@ -57,8 +50,8 @@ async function loadDashboard() {
     <h3>⚠️ Budget Alerts</h3>
     ${alertsData.alerts.map(a => `
       <div style="
+        margin-top:10px;
         padding:10px;
-        margin-bottom:10px;
         border-left:6px solid ${a.status === "exceeded" ? "red" : "orange"};
         background:#f9f9f9;
       ">

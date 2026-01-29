@@ -20,9 +20,16 @@
 <div class="card" id="summary">Loading summary...</div>
 <div class="card" id="alerts">Loading alerts...</div>
 
-<!-- DASHBOARD VERSION: 2026-01-SINGLE-SCRIPT -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const summary = document.getElementById("summary");
+  const alerts = document.getElementById("alerts");
 
-<script src="/static/dashboard.js"></script>
+  if (summary) summary.innerHTML = "✅ JS is running";
+  if (alerts) alerts.innerHTML = "✅ Alerts loaded";
+});
+</script>
+
 
 </body>
 </html>

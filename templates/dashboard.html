@@ -17,50 +17,57 @@
 <div class="card" id="summary">Loading summary...</div>
 <div class="card" id="alerts">Loading alerts...</div>
 
+<!-- DASHBOARD VERSION: 2026-01-SINGLE-SCRIPT -->
+
 <script>
 async function loadDashboard() {
-  // ---------- SUMMARY ----------
-  const summaryRes = await fetch("/summary/monthly");
-  const summary = await summaryRes.json();
+  try {
+    // ---------- SUMMARY ----------
+    const summaryRes = await fetch("/summary/monthly");
+    const summary = await summaryRes.json();
 
-  document.getElementById("summary").innerHTML = `
-    <h3>Total Spend</h3>
-    <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+    document.getElementById("summary").innerHTML = `
+      <h3>Total Spend</h3>
+      <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+      <h4>By Merchant</h4>
+      <ul>
+        ${summary.by_merchant.map(m =>
+          `<li>${m.merchant}: ₹ ${m.total}</li>`
+        ).join("")}
+      </ul>
+    `;
 
-    <h4>By Merchant</h4>
-    <ul>
-      ${summary.by_merchant.map(m =>
-        `<li>${m.merchant}: ₹ ${m.total}</li>`
-      ).join("")}
-    </ul>
-  `;
+    // ---------- ALERTS ----------
+    const alertsRes = await fetch("/alerts/monthly");
+    const alertsData = await alertsRes.json();
 
-  // ---------- ALERTS ----------
-  const alertsRes = await fetch("/alerts/monthly");
-  const alertsData = await alertsRes.json();
+    const alertsDiv = document.getElementById("alerts");
 
-  const alertsDiv = document.getElementById("alerts");
+    if (!alertsData.alerts || alertsData.alerts.length === 0) {
+      alertsDiv.innerHTML = "<p>✅ No budget alerts</p>";
+      return;
+    }
 
-  if (!alertsData.alerts || alertsData.alerts.length === 0) {
-    alertsDiv.innerHTML = "<p>✅ No budget alerts</p>";
-    return;
+    alertsDiv.innerHTML = `
+      <h3>⚠️ Budget Alerts</h3>
+      ${alertsData.alerts.map(a => `
+        <div style="
+          margin-top:10px;
+          padding:10px;
+          border-left:6px solid ${a.status === "exceeded" ? "red" : "orange"};
+          background:#f9f9f9;
+        ">
+          <strong>${a.category}</strong><br/>
+          Spent ₹${a.spent} / ₹${a.limit}<br/>
+          ${a.percent}% used
+        </div>
+      `).join("")}
+    `;
+  } catch (err) {
+    console.error("Dashboard error:", err);
+    document.getElementById("alerts").innerHTML =
+      "<p>⚠️ Failed to load alerts</p>";
   }
-
-  alertsDiv.innerHTML = `
-    <h3>⚠️ Budget Alerts</h3>
-    ${alertsData.alerts.map(a => `
-      <div style="
-        margin-top:10px;
-        padding:10px;
-        border-left:6px solid ${a.status === "exceeded" ? "red" : "orange"};
-        background:#f9f9f9;
-      ">
-        <strong>${a.category}</strong><br/>
-        Spent ₹${a.spent} / ₹${a.limit}<br/>
-        ${a.percent}% used
-      </div>
-    `).join("")}
-  `;
 }
 
 loadDashboard();

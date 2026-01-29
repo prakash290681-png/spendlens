@@ -32,7 +32,10 @@ app.include_router(admin_router)
 Base.metadata.create_all(bind=engine)
 
 # Templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(
+    directory=os.path.join(BASE_DIR, "templates")
+)
+
 
 @app.get("/admin/debug-zomato")
 def debug_zomato_rows():

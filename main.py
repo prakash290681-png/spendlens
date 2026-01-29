@@ -11,14 +11,19 @@ from database import engine, SessionLocal
 from models import Base, Transaction
 from auth import router as auth_router
 from admin import router as admin_router
-
+from fastapi.staticfiles import StaticFiles
+import os
 # -------------------------------------------------
 # App setup
 # -------------------------------------------------
 app = FastAPI()
-from fastapi.staticfiles import StaticFiles
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.join(BASE_DIR, "static")),
+    name="static"
+)
 
 app.include_router(auth_router)
 app.include_router(admin_router)

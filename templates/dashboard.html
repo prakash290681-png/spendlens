@@ -21,12 +21,27 @@
 <div class="card" id="alerts">Loading alerts...</div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const summary = document.getElementById("summary");
-  const alerts = document.getElementById("alerts");
+document.addEventListener("DOMContentLoaded", async () => {
+  const alertsDiv = document.getElementById("alerts");
 
-  if (summary) summary.innerHTML = "✅ JS is running";
-  if (alerts) alerts.innerHTML = "✅ Alerts loaded";
+  try {
+    const res = await fetch("/alerts/monthly");
+    const data = await res.json();
+
+    if (!data.alerts || data.alerts.length === 0) {
+      alertsDiv.innerHTML = "✅ No budget alerts";
+      return;
+    }
+
+    alertsDiv.innerHTML = data.alerts.map(a => `
+      <div>
+        <strong>${a.category}</strong><br/>
+        Spent ₹${a.spent} / ₹${a.limit} (${a.percent}%)
+      </div>
+    `).join("");
+  } catch (e) {
+    alertsDiv.innerHTML = "⚠️ Failed to load alerts";
+  }
 });
 </script>
 

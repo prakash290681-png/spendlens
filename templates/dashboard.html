@@ -22,29 +22,54 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
+
+  // -------- SUMMARY --------
+  const summaryDiv = document.getElementById("summary");
+
+  try {
+    const summaryRes = await fetch("/summary/monthly");
+    const summary = await summaryRes.json();
+
+    summaryDiv.innerHTML = `
+      <h3>Total Spend (This Month)</h3>
+      <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+      <h4>By Merchant</h4>
+      <ul>
+        ${(summary.by_merchant || []).map(m =>
+          `<li>${m.merchant}: ₹ ${m.total}</li>`
+        ).join("")}
+      </ul>
+    `;
+  } catch {
+    summaryDiv.innerHTML = "⚠️ Failed to load summary";
+  }
+
+  // -------- ALERTS --------
   const alertsDiv = document.getElementById("alerts");
 
   try {
-    const res = await fetch("/alerts/monthly");
-    const data = await res.json();
+    const alertsRes = await fetch("/alerts/monthly");
+    const data = await alertsRes.json();
 
     if (!data.alerts || data.alerts.length === 0) {
       alertsDiv.innerHTML = "✅ No budget alerts";
       return;
     }
 
-    alertsDiv.innerHTML = data.alerts.map(a => `
-      <div>
-        <strong>${a.category}</strong><br/>
-        Spent ₹${a.spent} / ₹${a.limit} (${a.percent}%)
-      </div>
-    `).join("");
-  } catch (e) {
+    alertsDiv.innerHTML = `
+      <h3>⚠️ Budget Alerts</h3>
+      ${data.alerts.map(a => `
+        <div style="margin-top:10px;">
+          <strong>${a.category}</strong><br/>
+          Spent ₹${a.spent} / ₹${a.limit} (${a.percent}%)
+        </div>
+      `).join("")}
+    `;
+  } catch {
     alertsDiv.innerHTML = "⚠️ Failed to load alerts";
   }
 });
 </script>
-
 
 </body>
 </html>

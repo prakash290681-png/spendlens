@@ -71,12 +71,12 @@ def health_check():
 # -------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
-    print("🔥🔥🔥 DASHBOARD ROUTE HIT 🔥🔥🔥")
-    print("🔥 templates dir =", templates.directory)
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request}
     )
+
+
 
 # -------------------------------------------------
 # Monthly config

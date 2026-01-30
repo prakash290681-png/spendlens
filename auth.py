@@ -5,7 +5,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from database import SessionLocal
 from models import User
-from gmail_service import fetch_recent_emails
+from ingest import ingest_gmail_spends
 import os
 
 router = APIRouter()
@@ -68,11 +68,11 @@ def callback(request: Request):
         redirect_uri=REDIRECT_URI,
     )
 
-    # ✅ Fetch OAuth tokens
+    # 1️⃣ Fetch OAuth tokens
     flow.fetch_token(authorization_response=str(request.url))
     credentials = flow.credentials
 
-    # ✅ Verify user identity
+    # 2️⃣ Verify user identity
     token_info = id_token.verify_oauth2_token(
         credentials.id_token,
         google_requests.Request(),
@@ -82,16 +82,8 @@ def callback(request: Request):
     email = token_info.get("email")
     name = token_info.get("name")
 
-    # -------------------------------------------------
-    # ✅ FETCH GMAIL & PERSIST TRANSACTIONS (CRITICAL)
-    # -------------------------------------------------
-    fetch_recent_emails(credentials.token)
-
-    # -------------------------------------------------
-    # ✅ USER UPSERT
-    # -------------------------------------------------
+    # 3️⃣ User upsert
     db = SessionLocal()
-
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
@@ -100,7 +92,10 @@ def callback(request: Request):
         db.commit()
         db.refresh(user)
 
-    # store user in session
+    # 4️⃣ INGEST GMAIL → EXTRACT → SAVE TRANSACTIONS (🔥 THIS IS THE KEY)
+    ingest_gmail_spends(credentials.token, user.id)
+
+    # 5️⃣ Store session
     request.session["user_id"] = user.id
     request.session["user_email"] = user.email
 

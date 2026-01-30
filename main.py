@@ -11,19 +11,24 @@ from database import engine, SessionLocal
 from models import Base, Transaction
 from auth import router as auth_router
 from admin import router as admin_router
-from fastapi.staticfiles import StaticFiles
 import os
+
+def get_current_month_range():
+    now = datetime.now(timezone.utc)
+    start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+
+    if now.month == 12:
+        end = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        end = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
+
+    return start, end
+
 # -------------------------------------------------
 # App setup
 # -------------------------------------------------
 app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-app.mount(
-    "/static",
-    StaticFiles(directory=os.path.join(BASE_DIR, "public")),
-    name="static"
-)
 
 app.include_router(auth_router)
 app.include_router(admin_router)
@@ -77,19 +82,12 @@ def dashboard(request: Request):
     )
 
 
-
-# -------------------------------------------------
-# Monthly config
-# -------------------------------------------------
-TARGET_YEAR = 2026
-TARGET_MONTH = 1
-
 MONTHLY_BUDGETS = {
     "Food Delivery": 2000
 }
 
 
-def evaluate_monthly_budget_alerts(year: int, month: int):
+def evaluate_monthly_budget_alerts(start, end):
     db = SessionLocal()
     alerts = []
 
@@ -100,8 +98,8 @@ def evaluate_monthly_budget_alerts(year: int, month: int):
                 func.sum(Transaction.amount).label("total")
             )
             .filter(
-                func.extract("year", Transaction.date) == year,
-                func.extract("month", Transaction.date) == month,
+                Transaction.date >= start,
+                Transaction.date < end
             )
             .group_by(Transaction.category)
             .all()
@@ -130,13 +128,8 @@ def evaluate_monthly_budget_alerts(year: int, month: int):
 def monthly_summary():
     db = SessionLocal()
 
-    start = datetime(TARGET_YEAR, TARGET_MONTH, 1, tzinfo=timezone.utc)
-    end = (
-        datetime(TARGET_YEAR + 1, 1, 1, tzinfo=timezone.utc)
-        if TARGET_MONTH == 12
-        else datetime(TARGET_YEAR, TARGET_MONTH + 1, 1, tzinfo=timezone.utc)
-    )
-
+    start, end = get_current_month_range()
+    
     category_rows = (
         db.query(
             Transaction.category,
@@ -161,10 +154,7 @@ def monthly_summary():
 
     db.close()
 
-    alerts = evaluate_monthly_budget_alerts(
-    year=TARGET_YEAR,
-    month=TARGET_MONTH
-)
+    alerts = evaluate_monthly_budget_alerts(start, end)
 
     return {
         "total_spent": round(total_spent, 2),
@@ -186,12 +176,7 @@ def monthly_summary():
 def monthly_alerts():
     db = SessionLocal()
 
-    start = datetime(TARGET_YEAR, TARGET_MONTH, 1, tzinfo=timezone.utc)
-    end = (
-        datetime(TARGET_YEAR + 1, 1, 1, tzinfo=timezone.utc)
-        if TARGET_MONTH == 12
-        else datetime(TARGET_YEAR, TARGET_MONTH + 1, 1, tzinfo=timezone.utc)
-    )
+    start, end = get_current_month_range()
 
     rows = (
         db.query(

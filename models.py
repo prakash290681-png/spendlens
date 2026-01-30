@@ -1,10 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # ----------------------------
-# User model (Phase 2A)
+# User model
 # ----------------------------
 class User(Base):
     __tablename__ = "users"
@@ -13,24 +13,31 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
 
 
 # ----------------------------
-# Transaction model (existing)
+# Transaction model
 # ----------------------------
 class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, index=True)
 
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+
     merchant = Column(String, index=True)
     category = Column(String, index=True)
     amount = Column(Float)
 
-    date = Column(DateTime, index=True)
+    date = Column(DateTime(timezone=True), index=True)
 
-    # Used to prevent duplicate inserts from emails
     source_id = Column(String, unique=True, index=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )

@@ -25,7 +25,16 @@ def ingest_gmail_spends(access_token: str, user_id: int):
             if exists:
                 continue
 
-            txn = Transaction(
+            existing = (
+                db.query(Transaction)
+                .filter(Transaction.source_id == spend["source_id"])
+                .first()
+            )
+
+            if existing:
+                continue  # already ingested, skip safely
+
+            tx = Transaction(
                 user_id=user_id,
                 merchant=spend["merchant"],
                 category=spend["category"],
@@ -34,7 +43,8 @@ def ingest_gmail_spends(access_token: str, user_id: int):
                 source_id=spend["source_id"],
             )
 
-            db.add(txn)
+            db.add(tx)
+
             inserted += 1
 
         db.commit()

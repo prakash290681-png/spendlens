@@ -1,12 +1,19 @@
+# -------------------------------------------------
+# IMPORTANT: Allow HTTP OAuth for LOCAL development
+# (Safe: ignored in production HTTPS)
+# -------------------------------------------------
+import os
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+
 from database import SessionLocal
 from models import User
 from ingest import ingest_gmail_spends
-import os
 
 router = APIRouter()
 
@@ -21,9 +28,9 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
 ]
 
-# ----------------------------
+# -------------------------------------------------
 # Login
-# ----------------------------
+# -------------------------------------------------
 @router.get("/auth/login")
 def login():
     flow = Flow.from_client_config(
@@ -49,9 +56,9 @@ def login():
     return RedirectResponse(auth_url)
 
 
-# ----------------------------
+# -------------------------------------------------
 # OAuth Callback
-# ----------------------------
+# -------------------------------------------------
 @router.get("/auth/callback")
 def callback(request: Request):
     flow = Flow.from_client_config(
@@ -68,18 +75,18 @@ def callback(request: Request):
         redirect_uri=REDIRECT_URI,
     )
 
-    # 1️⃣ Fetch OAuth tokens
+    # 1️⃣ Exchange code → tokens
     flow.fetch_token(authorization_response=str(request.url))
     credentials = flow.credentials
 
-    # 2️⃣ Verify user identity
+    # 2️⃣ Verify Google identity
     token_info = id_token.verify_oauth2_token(
         credentials.id_token,
         google_requests.Request(),
         GOOGLE_CLIENT_ID,
     )
 
-    email = token_info.get("email")
+    email = token_info["email"]
     name = token_info.get("name")
 
     # 3️⃣ User upsert
@@ -92,7 +99,7 @@ def callback(request: Request):
         db.commit()
         db.refresh(user)
 
-    # 4️⃣ INGEST GMAIL → EXTRACT → SAVE TRANSACTIONS (🔥 THIS IS THE KEY)
+    # 4️⃣ INGEST GMAIL → EXTRACT → SAVE TRANSACTIONS
     ingest_gmail_spends(credentials.token, user.id)
 
     # 5️⃣ Store session
@@ -104,9 +111,9 @@ def callback(request: Request):
     return RedirectResponse("/dashboard")
 
 
-# ----------------------------
+# -------------------------------------------------
 # Logout
-# ----------------------------
+# -------------------------------------------------
 @router.get("/auth/logout")
 def logout(request: Request):
     request.session.clear()

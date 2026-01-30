@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from datetime import datetime, timezone
-
+from starlette.middleware.sessions import SessionMiddleware
 from database import engine, SessionLocal
 from models import Base, Transaction
 from auth import router as auth_router
@@ -28,6 +28,13 @@ def get_current_month_range():
 # App setup
 # -------------------------------------------------
 app = FastAPI()
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "spendlens-secret"),
+    same_site="lax",
+    https_only=True
+)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app.include_router(auth_router)

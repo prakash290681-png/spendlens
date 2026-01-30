@@ -11,15 +11,20 @@
 </head>
 <body>
 
-
 <h1>SpendLens</h1>
-<p>Your spending summary (current month)</p>
+<p id="month-label"></p>
 
 <div class="card" id="summary">Loading summary...</div>
 <div class="card" id="alerts">Loading alerts...</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
+  const now = new Date();
+  const monthName = now.toLocaleString("default", { month: "long" });
+  const year = now.getFullYear();
+
+  document.getElementById("month-label").innerText =
+    `Your spending summary (${monthName} ${year})`;
 
   // -------- SUMMARY --------
   const summaryDiv = document.getElementById("summary");
@@ -29,7 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const summary = await summaryRes.json();
 
     summaryDiv.innerHTML = `
-      <h3>Total Spend (This Month)</h3>
+      <h3>Total Spend</h3>
       <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
       <h4>By Merchant</h4>
       <ul>

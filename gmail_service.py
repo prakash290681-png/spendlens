@@ -71,6 +71,14 @@ def get_email_content(service, message_id):
         format="full"
     ).execute()
 
+    print("📩 MSG ID:", msg["id"])
+    print("📩 PAYLOAD MIME:", msg["payload"].get("mimeType"))
+    print("📩 HAS PARTS:", "parts" in msg["payload"])
+    print(
+        "📩 PART MIMES:",
+        [p.get("mimeType") for p in msg["payload"].get("parts", [])]
+    )
+
     headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
     body = extract_body(msg["payload"])
 

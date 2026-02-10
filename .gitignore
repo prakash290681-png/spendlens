@@ -27,3 +27,8 @@ __pycache__/
 
 spendlens.zip 
 __pycache__/ 
+
+# SQLite runtime files
+*.db-wal
+*.db-shm
+*.db-journal

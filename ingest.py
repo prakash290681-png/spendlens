@@ -5,12 +5,14 @@ from spend_extractor import extract_spend
 from gmail_service import fetch_recent_emails
 
 
-def ingest_gmail_spends(access_token: str, user_id: int):
+def ingest_gmail_spends(access_token: str, user_id: int, month: str):
     print("🚀 INGEST STARTED FOR USER:", user_id)
 
-    emails, service = fetch_recent_emails(access_token, return_service=True)
+    emails, service = fetch_recent_emails(access_token, month, return_service=True)
     db = SessionLocal()
     inserted = 0
+
+    print("TRY INSERT:", spend["merchant"], spend["amount"], spend["source_id"])
 
     try:
         for email in emails:

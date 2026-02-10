@@ -1,6 +1,7 @@
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from datetime import datetime, timezone
+from calendar import monthrange
 import time
 import base64
 
@@ -82,6 +83,9 @@ def get_email_content(service, message_id):
     headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
     body = extract_body(msg["payload"])
 
+    print("🧪 BODY LEN:", len(body))
+    print("🧪 BODY SAMPLE:", body[:200].replace("\n", " "))
+
     return {
         "id": msg["id"],
         "From": headers.get("From", ""),
@@ -91,9 +95,14 @@ def get_email_content(service, message_id):
     }
 
 
-def fetch_recent_emails(access_token: str, return_service=False):
+def fetch_recent_emails(access_token: str, month: str, return_service=False):
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
+
+    year, mon = map(int, month.split("-"))
+
+    start = f"{year}/{mon:02d}/01"
+    end = f"{year}/{mon:02d}/{monthrange(year, mon)[1]}"
 
     query = (
         '('
@@ -106,7 +115,7 @@ def fetch_recent_emails(access_token: str, return_service=False):
         'from:zomato OR '
         'from:hdfc OR from:icici OR from:axis OR from:sbi'
         ') '
-        'after:2026/02/01 before:2026/03/01'# changed to feb month#
+        f'after:{start} before:{end}'
     )
 
     emails = []

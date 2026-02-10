@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from database import SessionLocal
 from models import Transaction
 from spend_extractor import extract_spend
@@ -5,8 +6,9 @@ from gmail_service import fetch_recent_emails
 
 
 def ingest_gmail_spends(access_token: str, user_id: int):
-    emails, service = fetch_recent_emails(access_token, return_service=True)
+    print("🚀 INGEST STARTED FOR USER:", user_id)
 
+    emails, service = fetch_recent_emails(access_token, return_service=True)
     db = SessionLocal()
     inserted = 0
 
@@ -16,39 +18,24 @@ def ingest_gmail_spends(access_token: str, user_id: int):
             if not spend:
                 continue
 
-            # 🔁 prevent duplicates
-            exists = db.query(Transaction).filter(
-                Transaction.source_id == spend["source_id"],
-                Transaction.user_id == user_id
-            ).first()
+            # 🔒 enforce ownership
+            spend["user_id"] = user_id
 
-            if exists:
+            try:
+                db.add(Transaction(**spend))
+                db.commit()
+                inserted += 1
+
+            except IntegrityError:
+                # (user_id, source_id) already exists → expected
+                db.rollback()
                 continue
 
-            existing = (
-                db.query(Transaction)
-                .filter(Transaction.source_id == spend["source_id"])
-                .first()
-            )
+        print(f"✅ INSERTED {inserted} TRANSACTIONS")
 
-            if existing:
-                continue  # already ingested, skip safely
-
-            tx = Transaction(
-                user_id=user_id,
-                merchant=spend["merchant"],
-                category=spend["category"],
-                amount=spend["amount"],
-                date=spend["date"],
-                source_id=spend["source_id"],
-            )
-
-            db.add(tx)
-
-            inserted += 1
-
-        db.commit()
-        print(f"✅ Inserted {inserted} transactions")
+    except Exception as e:
+        db.rollback()
+        print("❌ INGEST ERROR:", e)
 
     finally:
         db.close()

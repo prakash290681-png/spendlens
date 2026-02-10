@@ -1,11 +1,10 @@
 # -------------------------------------------------
-# IMPORTANT: Allow HTTP OAuth for LOCAL development
-# (Safe: ignored in production HTTPS)
+# Allow HTTP OAuth for LOCAL development
 # -------------------------------------------------
 import os
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
@@ -57,10 +56,10 @@ def login():
 
 
 # -------------------------------------------------
-# OAuth Callback
+# OAuth Callback (CORRECT & SAFE)
 # -------------------------------------------------
 @router.get("/auth/callback")
-def callback(request: Request):
+def callback(request: Request, background_tasks: BackgroundTasks):
     flow = Flow.from_client_config(
         {
             "web": {
@@ -79,12 +78,14 @@ def callback(request: Request):
     flow.fetch_token(authorization_response=str(request.url))
     credentials = flow.credentials
 
-    # 2️⃣ Verify Google identity
+    # 2️⃣ Verify identity
     token_info = id_token.verify_oauth2_token(
         credentials.id_token,
         google_requests.Request(),
         GOOGLE_CLIENT_ID,
+        clock_skew_in_seconds=30, # required for local dev
     )
+
 
     email = token_info["email"]
     name = token_info.get("name")
@@ -99,14 +100,19 @@ def callback(request: Request):
         db.commit()
         db.refresh(user)
 
-    # 4️⃣ INGEST GMAIL → EXTRACT → SAVE TRANSACTIONS
-    ingest_gmail_spends(credentials.token, user.id)
-
-    # 5️⃣ Store session
+    # 4️⃣ Session MUST be set BEFORE ingest
     request.session["user_id"] = user.id
     request.session["user_email"] = user.email
+    request.session["ingesting"] = True
 
     db.close()
+
+    # 5️⃣ Run ingest in BACKGROUND (no DB lock)
+    background_tasks.add_task(
+        ingest_gmail_spends,
+        credentials.token,
+        user.id,
+    )
 
     return RedirectResponse("/dashboard")
 

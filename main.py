@@ -9,18 +9,40 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy import func, cast, Date
+from sqlalchemy import func
 
 from database import engine, SessionLocal
 from models import Base, Transaction
 from auth import router as auth_router
 from admin import router as admin_router
 
-#Date Range Helper (Temp: Jan 2026)#
-def get_jan_2026_range():
-    start = datetime(2026, 1, 1)
-    end = datetime(2026, 2, 1)
+
+# -------------------------------------------------
+# Date Helpers
+# -------------------------------------------------
+def get_month_range(month_str: str | None):
+    if month_str:
+        year, mon = map(int, month_str.split("-"))
+    else:
+        today = datetime.today()
+        year, mon = today.year, today.month
+
+    start = datetime(year, mon, 1)
+    end = datetime(year + (mon == 12), (mon % 12) + 1, 1)
     return start, end
+
+
+def get_previous_month(month_str: str | None):
+    if month_str:
+        year, mon = map(int, month_str.split("-"))
+    else:
+        today = datetime.today()
+        year, mon = today.year, today.month
+
+    if mon == 1:
+        return f"{year-1}-12"
+    return f"{year}-{str(mon-1).zfill(2)}"
+
 
 # -------------------------------------------------
 # App setup
@@ -82,15 +104,20 @@ def dashboard(request: Request):
 
 
 # -------------------------------------------------
-# Monthly Summary (DEDUP AT READ TIME)
+# Monthly Summary
 # -------------------------------------------------
 @app.get("/summary/monthly")
-def monthly_summary(request: Request):
+def monthly_summary(request: Request, month: str | None = None):
     user_id = get_current_user(request)
-    start, end = get_jan_2026_range()
+
+    start, end = get_month_range(month)
+
+    prev_month = get_previous_month(month)
+    p_start, p_end = get_month_range(prev_month)
 
     db = SessionLocal()
 
+    # ---- Current month ----
     category_rows = (
         db.query(
             Transaction.category,
@@ -121,6 +148,26 @@ def monthly_summary(request: Request):
 
     total_spent = sum(r.total for r in category_rows)
 
+    # ---- Previous month ----
+    prev_total_row = (
+        db.query(func.sum(Transaction.amount))
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= p_start,
+            Transaction.date < p_end,
+        )
+        .scalar()
+    )
+
+    previous_total = prev_total_row or 0
+
+    # ---- Change ----
+    change_percent = 0
+    if previous_total > 0:
+        change_percent = round(
+            ((total_spent - previous_total) / previous_total) * 100, 1
+        )
+
     db.close()
 
     return {
@@ -133,6 +180,11 @@ def monthly_summary(request: Request):
             {"merchant": r.merchant, "total": round(r.total, 2)}
             for r in merchant_rows
         ],
+        "comparison": {
+            "previous_total": round(previous_total, 2),
+            "change_percent": change_percent,
+            "trend": "up" if change_percent > 0 else "down" if change_percent < 0 else "same"
+        },
         "budget_alerts": [],
     }
 
@@ -141,9 +193,9 @@ def monthly_summary(request: Request):
 # Monthly Alerts
 # -------------------------------------------------
 @app.get("/alerts/monthly")
-def monthly_alerts(request: Request):
+def monthly_alerts(request: Request, month: str | None = None):
     user_id = get_current_user(request)
-    start, end = get_jan_2026_range()
+    start, end = get_month_range(month)
 
     db = SessionLocal()
 
@@ -181,9 +233,10 @@ def monthly_alerts(request: Request):
                 "percent": percent,
                 "status": "exceeded" if percent >= 100 else "warning",
             })
-    
+
     db.close()
     return {"alerts": alerts}
+
 
 # -------------------------------------------------
 # Debug
@@ -222,3 +275,163 @@ def debug_transactions(request: Request, month: str):
 
     finally:
         db.close()
+
+
+# -------------------------------------------------
+# Recurring Merchants
+# -------------------------------------------------
+@app.get("/insights/recurring")
+def recurring_merchants(request: Request):
+    user_id = get_current_user(request)
+
+    db = SessionLocal()
+
+    rows = (
+        db.query(
+            Transaction.merchant,
+            func.count(func.strftime("%Y-%m", Transaction.date)).label("months"),
+            func.max(Transaction.date).label("last_date")
+        )
+        .filter(Transaction.user_id == user_id)
+        .group_by(Transaction.merchant)
+        .having(func.count(func.strftime("%Y-%m", Transaction.date)) >= 2)
+        .order_by(func.count(func.strftime("%Y-%m", Transaction.date)).desc())
+        .all()
+    )
+
+    results = []
+
+    for merchant, months, last_date in rows:
+        last_amount = (
+            db.query(Transaction.amount)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.merchant == merchant,
+                Transaction.date == last_date
+            )
+            .scalar()
+        )
+
+        results.append({
+            "merchant": merchant,
+            "months": months,
+            "last_amount": last_amount
+        })
+
+    db.close()
+    return results
+
+# -------------------------------------------------
+# AI Insights (rule-based intelligence)
+# -------------------------------------------------
+@app.get("/insights/ai")
+def ai_insights(request: Request, month: str | None = None):
+    user_id = get_current_user(request)
+
+    start, end = get_month_range(month)
+    prev_month = get_previous_month(month)
+    p_start, p_end = get_month_range(prev_month)
+
+    db = SessionLocal()
+
+    insights = []
+
+    # ---- totals ----
+    current_total = (
+        db.query(func.sum(Transaction.amount))
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= start,
+            Transaction.date < end,
+        )
+        .scalar()
+    ) or 0
+
+    previous_total = (
+        db.query(func.sum(Transaction.amount))
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= p_start,
+            Transaction.date < p_end,
+        )
+        .scalar()
+    ) or 0
+
+    # ---- month-end prediction ----
+    today = datetime.today()
+
+    # only predict if viewing current month
+    if start.year == today.year and start.month == today.month:
+        days_passed = today.day
+        if days_passed > 0:
+            avg_per_day = current_total / days_passed
+
+            # total days in this month
+            last_day = (end - start).days
+
+            projected_total = round(avg_per_day * last_day, 2)
+
+            insights.append(
+                f"At this pace, you may spend about ₹{projected_total} by month end."
+            )
+
+    if previous_total > 0:
+        change = round(((current_total - previous_total) / previous_total) * 100, 1)
+        if change > 0:
+            insights.append(f"Spending increased {change}% compared to last month.")
+        elif change < 0:
+            insights.append(f"Good job! Spending dropped {abs(change)}% from last month.")
+
+    # ---- top category ----
+    top_category = (
+        db.query(
+            Transaction.category,
+            func.sum(Transaction.amount).label("total")
+        )
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= start,
+            Transaction.date < end,
+        )
+        .group_by(Transaction.category)
+        .order_by(func.sum(Transaction.amount).desc())
+        .first()
+    )
+
+    if top_category:
+        insights.append(f"{top_category[0]} is your top spending category.")
+
+    # ---- top merchant ----
+    top_merchant = (
+        db.query(
+            Transaction.merchant,
+            func.sum(Transaction.amount).label("total")
+        )
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= start,
+            Transaction.date < end,
+        )
+        .group_by(Transaction.merchant)
+        .order_by(func.sum(Transaction.amount).desc())
+        .first()
+    )
+
+    if top_merchant:
+        insights.append(f"{top_merchant[0]} is your highest expense merchant.")
+
+    # ---- recurring ----
+    recurring_count = (
+        db.query(Transaction.merchant)
+        .filter(Transaction.user_id == user_id)
+        .group_by(Transaction.merchant)
+        .having(func.count(func.strftime("%Y-%m", Transaction.date)) >= 2)
+        .count()
+    )
+
+    if recurring_count:
+        insights.append(f"You have {recurring_count} recurring merchants.")
+
+    db.close()
+
+    return insights

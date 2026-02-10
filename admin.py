@@ -1,88 +1,88 @@
 from fastapi import APIRouter
 from database import SessionLocal
 from models import Transaction
-from sqlalchemy import Date
 from datetime import timezone
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-@router.post("/cleanup-swiggy")
-def cleanup_swiggy():
-    """
-    Remove duplicate Swiggy rows:
-    rule = same UTC date + same amount
-    """
+# -------------------------------------------------
+# Swiggy duplicate cleanup
+# Rule:
+# Same user + Swiggy + same calendar day + same amount
+# -------------------------------------------------
+@router.get("/cleanup-swiggy-duplicates")
+def cleanup_swiggy_duplicates():
     db = SessionLocal()
     deleted = 0
 
-    try:
-        rows = (
-            db.query(Transaction)
-            .filter(Transaction.merchant == "Swiggy")
-            .order_by(Transaction.date, Transaction.id)
-            .all()
+    rows = (
+        db.query(Transaction)
+        .filter(Transaction.merchant == "Swiggy")
+        .order_by(Transaction.user_id, Transaction.date)
+        .all()
+    )
+
+    seen = {}
+
+    for tx in rows:
+        key = (
+            tx.user_id,
+            tx.date.astimezone(timezone.utc).date(),
+            round(float(tx.amount), 2),
         )
 
-        seen = set()
+        if key in seen:
+            db.delete(tx)
+            deleted += 1
+        else:
+            seen[key] = tx
 
-        for tx in rows:
-            key = (
-                tx.date.astimezone(timezone.utc).date(),
-                round(float(tx.amount), 2),
-            )
+    db.commit()
+    db.close()
 
-            if key in seen:
-                db.delete(tx)
-                deleted += 1
-            else:
-                seen.add(key)
-
-        db.commit()
-        return {
-            "status": "ok",
-            "deleted_duplicates": deleted,
-        }
-
-    finally:
-        db.close()
+    return {
+        "merchant": "Swiggy",
+        "deleted_duplicates": deleted,
+    }
 
 
-@router.post("/cleanup-zomato")
-def cleanup_zomato():
-    """
-    Optional manual cleanup for Zomato
-    """
+# -------------------------------------------------
+# Zomato duplicate cleanup
+# Rule:
+# Same user + Zomato + same calendar day + same amount
+# -------------------------------------------------
+@router.get("/cleanup-zomato-duplicates")
+def cleanup_zomato_duplicates():
     db = SessionLocal()
     deleted = 0
 
-    try:
-        rows = (
-            db.query(Transaction)
-            .filter(Transaction.merchant == "Zomato")
-            .order_by(Transaction.date, Transaction.id)
-            .all()
+    rows = (
+        db.query(Transaction)
+        .filter(Transaction.merchant == "Zomato")
+        .order_by(Transaction.user_id, Transaction.date)
+        .all()
+    )
+
+    seen = {}
+
+    for tx in rows:
+        key = (
+            tx.user_id,
+            tx.date.astimezone(timezone.utc).date(),
+            round(float(tx.amount), 2),
         )
 
-        seen = set()
+        if key in seen:
+            db.delete(tx)
+            deleted += 1
+        else:
+            seen[key] = tx
 
-        for tx in rows:
-            key = (
-                tx.date.astimezone(timezone.utc).date(),
-                round(float(tx.amount), 2),
-            )
+    db.commit()
+    db.close()
 
-            if key in seen:
-                db.delete(tx)
-                deleted += 1
-            else:
-                seen.add(key)
-
-        db.commit()
-        return {
-            "merchant": "Zomato",
-            "deleted_duplicates": deleted,
-        }
-
-    finally:
-        db.close()
+    return {
+        "merchant": "Zomato",
+        "deleted_duplicates": deleted,
+    }

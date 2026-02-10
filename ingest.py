@@ -6,13 +6,16 @@ from gmail_service import fetch_recent_emails
 
 
 def ingest_gmail_spends(access_token: str, user_id: int, month: str):
-    print("🚀 INGEST STARTED FOR USER:", user_id)
+    print("🚀 INGEST STARTED FOR USER:", user_id, "MONTH:", month)
 
-    emails, service = fetch_recent_emails(access_token, month, return_service=True)
+    emails, service = fetch_recent_emails(
+        access_token,
+        month,
+        return_service=True
+    )
+
     db = SessionLocal()
     inserted = 0
-
-    print("TRY INSERT:", spend["merchant"], spend["amount"], spend["source_id"])
 
     try:
         for email in emails:
@@ -23,13 +26,21 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
             # 🔒 enforce ownership
             spend["user_id"] = user_id
 
+            # ✅ DEBUG LOG (correct place)
+            print(
+                "TRY INSERT:",
+                spend["merchant"],
+                spend["amount"],
+                spend["source_id"],
+            )
+
             try:
                 db.add(Transaction(**spend))
                 db.commit()
                 inserted += 1
 
             except IntegrityError:
-                # (user_id, source_id) already exists → expected
+                # duplicate (user_id, source_id)
                 db.rollback()
                 continue
 

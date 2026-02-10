@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-
+from datetime import datetime
 from database import SessionLocal
 from models import User
 from ingest import ingest_gmail_spends
@@ -108,11 +108,16 @@ def callback(request: Request, background_tasks: BackgroundTasks):
     db.close()
 
     # 5️⃣ Run ingest in BACKGROUND (no DB lock)
+    
+    current_month = datetime.now().strftime("%Y-%m")
+
     background_tasks.add_task(
         ingest_gmail_spends,
         credentials.token,
         user.id,
+        current_month,
     )
+
 
     return RedirectResponse("/dashboard")
 
@@ -124,3 +129,27 @@ def callback(request: Request, background_tasks: BackgroundTasks):
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/")
+
+# -------------------------------------------------
+# Ingest for selected month (used by date picker)
+# -------------------------------------------------
+@router.post("/ingest/monthly")
+def ingest_for_month(
+    month: str,
+    request: Request,
+    background_tasks: BackgroundTasks
+):
+    user_id = request.session.get("user_id")
+    access_token = request.session.get("access_token")
+
+    if not user_id or not access_token:
+        return {"error": "Not authenticated"}
+
+    background_tasks.add_task(
+        ingest_gmail_spends,
+        access_token,
+        user_id,
+        month,
+    )
+
+    return {"status": "started", "month": month}

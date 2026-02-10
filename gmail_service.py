@@ -17,23 +17,30 @@ def extract_body(payload):
     if body:
         return base64.urlsafe_b64decode(body).decode("utf-8", errors="ignore")
 
+    text_plain = None
+    text_html = None
+
     def walk(parts):
+        nonlocal text_plain, text_html
         for part in parts:
             mime = part.get("mimeType", "")
             data = part.get("body", {}).get("data")
 
-            if mime in ("text/plain", "text/html") and data:
-                return base64.urlsafe_b64decode(data).decode(
+            if data:
+                decoded = base64.urlsafe_b64decode(data).decode(
                     "utf-8", errors="ignore"
                 )
+                if mime == "text/plain" and not text_plain:
+                    text_plain = decoded
+                elif mime == "text/html" and not text_html:
+                    text_html = decoded
 
             if "parts" in part:
-                found = walk(part["parts"])
-                if found:
-                    return found
-        return ""
+                walk(part["parts"])
 
-    return walk(payload.get("parts", []))
+    walk(payload.get("parts", []))
+
+    return text_plain or text_html or ""
 
 
 # -------------------------------------------------

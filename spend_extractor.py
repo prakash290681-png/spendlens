@@ -52,6 +52,7 @@ def extract_spend(email: dict, service):
     subject = email.get("Subject", "")
     body = email.get("Body", "")
     date = normalize_date(email.get("Date"))
+    source_id = email.get("id")
 
     merchant = (
         detect_merchant(sender)
@@ -63,11 +64,14 @@ def extract_spend(email: dict, service):
         return None
 
     category = detect_category(merchant)
-    source_id = email.get("id")
+
+    # ---------------- BANK AMOUNT (HIGHEST PRIORITY) ----------------
+    bank_amount = extract_amount(subject) or extract_amount(body)
 
     # ---------------- ZOMATO ----------------
     if merchant == "Zomato":
-        amount = extract_amount(body) or extract_amount(subject)
+        amount = bank_amount or extract_amount(body) or extract_amount(subject)
+
         if not amount or amount < 100:
             return None
 
@@ -82,7 +86,17 @@ def extract_spend(email: dict, service):
     # ---------------- SWIGGY ----------------
     if merchant == "Swiggy":
 
-        # 1️⃣ BODY TOTAL (HIGHEST PRIORITY)
+        # 1️⃣ BANK AMOUNT (always wins)
+        if bank_amount and bank_amount >= 100:
+            return {
+                "merchant": "Swiggy",
+                "category": category,
+                "amount": round(bank_amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
+
+        # 2️⃣ BODY TOTAL
         body_total = extract_swiggy_total_from_body(body)
         if body_total and body_total >= 100:
             return {
@@ -93,7 +107,7 @@ def extract_spend(email: dict, service):
                 "source_id": source_id,
             }
 
-        # 2️⃣ PDF TOTAL
+        # 3️⃣ PDF TOTAL
         pdf = extract_amount_from_pdf(email, service)
         if pdf and pdf.get("amount"):
             return {
@@ -104,7 +118,7 @@ def extract_spend(email: dict, service):
                 "source_id": pdf.get("order_id") or source_id,
             }
 
-        # 3️⃣ FALLBACK
+        # 4️⃣ FALLBACK
         fallback = extract_fallback_amount(body)
         if fallback:
             return {

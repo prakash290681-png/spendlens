@@ -65,13 +65,21 @@ def extract_spend(email: dict, service):
 
     category = detect_category(merchant)
 
-    # ---------------- BANK AMOUNT (HIGHEST PRIORITY) ----------------
-    bank_amount = extract_amount(subject) or extract_amount(body)
+    # ---- detect bank alert ----
+    is_bank_alert = any(
+        k in (sender + subject).lower()
+        for k in ["hdfc", "icici", "axis", "sbi"]
+    )
+
+    # ======================================================
+    # ❌ NEVER ingest BANK alerts for app-based merchants
+    # ======================================================
+    if is_bank_alert and merchant in ("Swiggy", "Zomato"):
+        return None
 
     # ---------------- ZOMATO ----------------
     if merchant == "Zomato":
-        amount = bank_amount or extract_amount(body) or extract_amount(subject)
-
+        amount = extract_amount(body) or extract_amount(subject)
         if not amount or amount < 100:
             return None
 
@@ -86,45 +94,45 @@ def extract_spend(email: dict, service):
     # ---------------- SWIGGY ----------------
     if merchant == "Swiggy":
 
-        # 1️⃣ BANK AMOUNT (always wins)
-        if bank_amount and bank_amount >= 100:
-            return {
-                "merchant": "Swiggy",
-                "category": category,
-                "amount": round(bank_amount, 2),
-                "date": date,
-                "source_id": source_id,
-            }
+    body_total = extract_swiggy_total_from_body(body)
+    if body_total and body_total >= 100:
+        return {
+            "merchant": "Swiggy",
+            "category": category,
+            "amount": round(body_total, 2),
+            "date": date,
+            "source_id": source_id,
+        }
 
-        # 2️⃣ BODY TOTAL
-        body_total = extract_swiggy_total_from_body(body)
-        if body_total and body_total >= 100:
-            return {
-                "merchant": "Swiggy",
-                "category": category,
-                "amount": round(body_total, 2),
-                "date": date,
-                "source_id": source_id,
-            }
+    pdf = extract_amount_from_pdf(email, service)
+    if pdf and pdf.get("amount"):
+        return {
+            "merchant": "Swiggy",
+            "category": category,
+            "amount": round(pdf["amount"], 2),
+            "date": date,
+            "source_id": source_id,   # 🔥 DO NOT override
+        }
 
-        # 3️⃣ PDF TOTAL
-        pdf = extract_amount_from_pdf(email, service)
-        if pdf and pdf.get("amount"):
-            return {
-                "merchant": "Swiggy",
-                "category": category,
-                "amount": round(pdf["amount"], 2),
-                "date": date,
-                "source_id": pdf.get("order_id") or source_id,
-            }
+    fallback = extract_fallback_amount(body)
+    if fallback:
+        return {
+            "merchant": "Swiggy",
+            "category": category,
+            "amount": round(fallback, 2),
+            "date": date,
+            "source_id": source_id,
+        }
 
-        # 4️⃣ FALLBACK
-        fallback = extract_fallback_amount(body)
-        if fallback:
+    # ---------------- BANK-ONLY MERCHANTS ----------------
+    # (ATM, transfers, utilities, etc.)
+    if is_bank_alert:
+        amount = extract_amount(subject) or extract_amount(body)
+        if amount and amount >= 100:
             return {
-                "merchant": "Swiggy",
+                "merchant": merchant,
                 "category": category,
-                "amount": round(fallback, 2),
+                "amount": round(amount, 2),
                 "date": date,
                 "source_id": source_id,
             }

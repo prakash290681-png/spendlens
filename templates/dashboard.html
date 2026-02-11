@@ -19,6 +19,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const recurringDiv = document.getElementById("recurring");
   const aiDiv = document.getElementById("aiInsights");
 
+  // 🔥 Safety guard (prevents white page)
+  if (!picker) {
+    console.error("monthPicker not found in HTML");
+    return;
+  }
+
   let categoryChart = null;
   let merchantChart = null;
 
@@ -31,129 +37,139 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function load(month) {
 
-    // 🔥 STEP 1: Ingest month FIRST
-    await fetch(`/ingest/monthly?month=${month}`, {
-      method: "POST",
-      credentials: "same-origin"
-    });
+    try {
 
-    label.innerText = `Your spending summary (${formatLabel(month)})`;
+      // 🔥 1️⃣ Ingest first
+      await fetch(`/ingest/monthly?month=${month}`, {
+        method: "POST",
+        credentials: "same-origin"
+      });
 
-    // -------- SUMMARY --------
-    const summary = await api(`/summary/monthly?month=${month}`);
-    if (!summary) return;
+      label.innerText = `Your spending summary (${formatLabel(month)})`;
 
-    summaryDiv.innerHTML = `
-      <h3>Total Spend</h3>
-      <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
-      <small>
-        ${summary.comparison.trend === "up" ? "🔺" :
-          summary.comparison.trend === "down" ? "🔻" : "➡️"}
-        ${Math.abs(summary.comparison.change_percent)}% vs last month
-      </small>
+      // -------- SUMMARY --------
+      const summary = await api(`/summary/monthly?month=${month}`);
+      if (!summary) return;
 
-      <h4>By Merchant</h4>
-      <ul>
-        ${(summary.by_merchant || []).map(m =>
-          `<li>${m.merchant}: ₹ ${m.total}</li>`
-        ).join("")}
-      </ul>
-    `;
+      summaryDiv.innerHTML = `
+        <h3>Total Spend</h3>
+        <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+        <small>
+          ${summary.comparison.trend === "up" ? "🔺" :
+            summary.comparison.trend === "down" ? "🔻" : "➡️"}
+          ${Math.abs(summary.comparison.change_percent)}% vs last month
+        </small>
 
-    // -------- CHARTS --------
-    if (categoryChart) categoryChart.destroy();
-    if (merchantChart) merchantChart.destroy();
-
-    const catCtx = document.getElementById("categoryChart");
-    const merCtx = document.getElementById("merchantChart");
-
-    categoryChart = new Chart(catCtx, {
-      type: "doughnut",
-      data: {
-        labels: summary.by_category.map(c => c.category),
-        datasets: [{
-          data: summary.by_category.map(c => c.total)
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
-
-    merchantChart = new Chart(merCtx, {
-      type: "bar",
-      data: {
-        labels: summary.by_merchant.map(m => m.merchant),
-        datasets: [{
-          data: summary.by_merchant.map(m => m.total)
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
-
-    // -------- ALERTS --------
-    const alertData = await api(`/alerts/monthly?month=${month}`);
-
-    if (!alertData || !alertData.alerts || alertData.alerts.length === 0) {
-      alertsDiv.innerHTML = "✅ No budget alerts";
-    } else {
-      alertsDiv.innerHTML = `
-        <h3>⚠️ Budget Alerts</h3>
-        ${alertData.alerts.map(a => `
-          <div class="${a.status}">
-            <strong>${a.category}</strong><br/>
-            Spent ₹${a.spent} / ₹${a.limit} (${a.percent}%)
-          </div>
-        `).join("")}
-      `;
-    }
-
-    // -------- RECURRING --------
-    const recurring = await api(`/insights/recurring`);
-
-    if (!recurring || recurring.length === 0) {
-      recurringDiv.innerHTML = "No recurring merchants detected";
-    } else {
-      recurringDiv.innerHTML = `
-        <h3>🔁 Recurring Payments</h3>
+        <h4>By Merchant</h4>
         <ul>
-          ${recurring.map(r =>
-            `<li>${r.merchant} – ${r.months} months (last ₹${r.last_amount})</li>`
+          ${(summary.by_merchant || []).map(m =>
+            `<li>${m.merchant}: ₹ ${m.total}</li>`
           ).join("")}
         </ul>
       `;
-    }
 
-    // -------- AI INSIGHTS --------
-    const ai = await api(`/insights/ai?month=${month}`);
+      // -------- CHARTS --------
+      if (categoryChart) categoryChart.destroy();
+      if (merchantChart) merchantChart.destroy();
 
-    if (!ai || ai.length === 0) {
-      aiDiv.innerHTML = "No insights yet.";
-    } else {
-      aiDiv.innerHTML = `
-        <h3>🧠 Insights</h3>
-        <ul>
-          ${ai.map(i => `<li>${i}</li>`).join("")}
-        </ul>
-      `;
+      const catCtx = document.getElementById("categoryChart");
+      const merCtx = document.getElementById("merchantChart");
+
+      if (catCtx && merCtx) {
+
+        categoryChart = new Chart(catCtx, {
+          type: "doughnut",
+          data: {
+            labels: summary.by_category.map(c => c.category),
+            datasets: [{
+              data: summary.by_category.map(c => c.total)
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+
+        merchantChart = new Chart(merCtx, {
+          type: "bar",
+          data: {
+            labels: summary.by_merchant.map(m => m.merchant),
+            datasets: [{
+              data: summary.by_merchant.map(m => m.total)
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      }
+
+      // -------- ALERTS --------
+      const alertData = await api(`/alerts/monthly?month=${month}`);
+
+      if (!alertData || !alertData.alerts || alertData.alerts.length === 0) {
+        alertsDiv.innerHTML = "✅ No budget alerts";
+      } else {
+        alertsDiv.innerHTML = `
+          <h3>⚠️ Budget Alerts</h3>
+          ${alertData.alerts.map(a => `
+            <div class="${a.status}">
+              <strong>${a.category}</strong><br/>
+              Spent ₹${a.spent} / ₹${a.limit} (${a.percent}%)
+            </div>
+          `).join("")}
+        `;
+      }
+
+      // -------- RECURRING --------
+      const recurring = await api(`/insights/recurring`);
+
+      if (!recurring || recurring.length === 0) {
+        recurringDiv.innerHTML = "No recurring merchants detected";
+      } else {
+        recurringDiv.innerHTML = `
+          <h3>🔁 Recurring Payments</h3>
+          <ul>
+            ${recurring.map(r =>
+              `<li>${r.merchant} – ${r.months} months (last ₹${r.last_amount})</li>`
+            ).join("")}
+          </ul>
+        `;
+      }
+
+      // -------- AI INSIGHTS --------
+      const ai = await api(`/insights/ai?month=${month}`);
+
+      if (!ai || ai.length === 0) {
+        aiDiv.innerHTML = "No insights yet.";
+      } else {
+        aiDiv.innerHTML = `
+          <h3>🧠 Insights</h3>
+          <ul>
+            ${ai.map(i => `<li>${i}</li>`).join("")}
+          </ul>
+        `;
+      }
+
+    } catch (err) {
+      console.error("Load error:", err);
     }
   }
 
-  // default month
+  // -------- DEFAULT MONTH --------
   const today = new Date();
   const defaultMonth =
-    today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0");
+    today.getFullYear() + "-" +
+    String(today.getMonth() + 1).padStart(2, "0");
 
   picker.value = defaultMonth;
 
-  // 🔥 Load default month (ingest + summary)
+  // 🔥 Load default month
   await load(defaultMonth);
 
-  // 🔥 When month changes
+  // 🔥 Month change
   picker.addEventListener("change", async (e) => {
     await load(e.target.value);
   });

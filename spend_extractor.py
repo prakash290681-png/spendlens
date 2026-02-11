@@ -92,37 +92,40 @@ def extract_spend(email: dict, service):
         }
 
     # ---------------- SWIGGY ----------------
+    # ---------------- SWIGGY ----------------
     if merchant == "Swiggy":
 
-    body_total = extract_swiggy_total_from_body(body)
-    if body_total and body_total >= 100:
-        return {
-            "merchant": "Swiggy",
-            "category": category,
-            "amount": round(body_total, 2),
-            "date": date,
-            "source_id": source_id,
-        }
+        body_total = extract_swiggy_total_from_body(body)
+        if body_total and body_total >= 100:
+            return {
+                "merchant": "Swiggy",
+                "category": category,
+                "amount": round(body_total, 2),
+                "date": date,
+                "source_id": source_id,
+            }
 
-    pdf = extract_amount_from_pdf(email, service)
-    if pdf and pdf.get("amount"):
-        return {
-            "merchant": "Swiggy",
-            "category": category,
-            "amount": round(pdf["amount"], 2),
-            "date": date,
-            "source_id": source_id,   # 🔥 DO NOT override
-        }
+        pdf = extract_amount_from_pdf(email, service)
+        if pdf and pdf.get("amount"):
+            return {
+                "merchant": "Swiggy",
+                "category": category,
+                "amount": round(pdf["amount"], 2),
+                "date": date,
+                "source_id": source_id,   # 🔥 DO NOT override
+            }
 
-    fallback = extract_fallback_amount(body)
-    if fallback:
-        return {
-            "merchant": "Swiggy",
-            "category": category,
-            "amount": round(fallback, 2),
-            "date": date,
-            "source_id": source_id,
-        }
+        fallback = extract_fallback_amount(body)
+        if fallback:
+            return {
+                "merchant": "Swiggy",
+                "category": category,
+                "amount": round(fallback, 2),
+                "date": date,
+                "source_id": source_id,
+            }
+
+        return None
 
     # ---------------- BANK-ONLY MERCHANTS ----------------
     # (ATM, transfers, utilities, etc.)

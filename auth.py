@@ -79,7 +79,7 @@ def callback(request: Request, background_tasks: BackgroundTasks):
     credentials = flow.credentials
 
     request.session["access_token"] = credentials.token
-    
+
     # 2️⃣ Verify identity
     token_info = id_token.verify_oauth2_token(
         credentials.id_token,
@@ -136,7 +136,13 @@ def logout(request: Request):
 # Ingest for selected month (used by date picker)
 # -------------------------------------------------
 @router.post("/ingest/monthly")
-def ingest_for_month(month: str, request: Request):
+def ingest_for_month(request: Request, month: str):
+
+    print("SESSION:", request.session)
+
+    if "access_token" not in request.session:
+        print("NO TOKEN IN SESSION")
+        return {"error": "no token"}
 
     user_id = request.session["user_id"]
     token = request.session["access_token"]
@@ -144,4 +150,3 @@ def ingest_for_month(month: str, request: Request):
     ingest_gmail_spends(token, user_id, month)
 
     return {"status": "done"}
-

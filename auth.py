@@ -134,22 +134,12 @@ def logout(request: Request):
 # Ingest for selected month (used by date picker)
 # -------------------------------------------------
 @router.post("/ingest/monthly")
-def ingest_for_month(
-    month: str,
-    request: Request,
-    background_tasks: BackgroundTasks
-):
-    user_id = request.session.get("user_id")
-    access_token = request.session.get("access_token")
+def ingest_for_month(month: str, request: Request):
 
-    if not user_id or not access_token:
-        return {"error": "Not authenticated"}
+    user_id = request.session["user_id"]
+    token = request.session["access_token"]
 
-    background_tasks.add_task(
-        ingest_gmail_spends,
-        access_token,
-        user_id,
-        month,
-    )
+    ingest_gmail_spends(token, user_id, month)
 
-    return {"status": "started", "month": month}
+    return {"status": "done"}
+

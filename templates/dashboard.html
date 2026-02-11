@@ -1,86 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>SpendLens Dashboard</title>
-  <style>
-    body { font-family: Arial; margin: 40px; }
-
-    .layout {
-      display: flex;
-      gap: 20px;
-      align-items: flex-start;
-    }
-
-    .left {
-      flex: 1;
-      min-width: 350px;
-    }
-
-    .right {
-      flex: 1.3;
-      min-width: 350px;
-    }
-
-    .card {
-      border: 1px solid #ddd;
-      padding: 16px;
-      margin-top: 16px;
-    }
-
-    .exceeded { color: red; }
-    .warning { color: orange; }
-
-    .chart-box {
-      position: relative;
-      height: 240px;
-    }
-
-    .chart-box canvas {
-      width: 100% !important;
-      height: 100% !important;
-    }
-  </style>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-
-<h1>SpendLens</h1>
-
-<div style="margin-bottom: 10px;">
-  <label><b>Select Month:</b></label>
-  <input type="month" id="monthPicker">
-</div>
-
-<p id="month-label"></p>
-
-<div class="layout">
-  <!-- LEFT -->
-  <div class="left">
-    <div class="card" id="summary">Loading summary...</div>
-    <div class="card" id="alerts">Loading alerts...</div>
-    <div class="card" id="recurring">Loading recurring spends...</div>
-    <div class="card" id="aiInsights">Generating insights...</div>
-  </div>
-
-  <!-- RIGHT -->
-  <div class="right">
-    <div class="card">
-      <h3>Spend by Category</h3>
-      <div class="chart-box">
-        <canvas id="categoryChart"></canvas>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Spend by Merchant</h3>
-      <div class="chart-box">
-        <canvas id="merchantChart"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
 
@@ -113,6 +30,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function load(month) {
+
+    // 🔥 STEP 1: Ingest month FIRST
+    await fetch(`/ingest/monthly?month=${month}`, {
+      method: "POST",
+      credentials: "same-origin"
+    });
+
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 
     // -------- SUMMARY --------
@@ -226,14 +150,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   picker.value = defaultMonth;
 
+  // 🔥 Load default month (ingest + summary)
   await load(defaultMonth);
 
-  picker.addEventListener("change", (e) => {
-    load(e.target.value);
+  // 🔥 When month changes
+  picker.addEventListener("change", async (e) => {
+    await load(e.target.value);
   });
 
 });
 </script>
-
-</body>
-</html>

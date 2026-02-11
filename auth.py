@@ -78,6 +78,8 @@ def callback(request: Request, background_tasks: BackgroundTasks):
     flow.fetch_token(authorization_response=str(request.url))
     credentials = flow.credentials
 
+    request.session["access_token"] = credentials.token
+    
     # 2️⃣ Verify identity
     token_info = id_token.verify_oauth2_token(
         credentials.id_token,

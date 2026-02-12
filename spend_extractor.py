@@ -66,20 +66,13 @@ def extract_spend(email: dict, service):
 
     category = detect_category(merchant)
 
-    # Detect bank alerts
     combined_text = (sender + subject).lower()
-    is_bank_alert = any(
-        bank in combined_text
-        for bank in ["hdfc", "icici", "axis", "sbi"]
-    )
-
-    # ❌ NEVER ingest bank alerts for Swiggy/Zomato
-    if is_bank_alert and merchant in ("Swiggy", "Zomato"):
-        return None
+    is_bank_alert = any(bank in combined_text for bank in ["hdfc", "icici", "axis", "sbi"])
 
     # ---------------- ZOMATO ----------------
     if merchant == "Zomato":
 
+        # 1️⃣ Try strict order total from body
         match = re.search(
             r"(order total|amount paid|grand total)[^\d₹]*₹\s*([\d,]+(?:\.\d{1,2})?)",
             body,
@@ -97,11 +90,24 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
+        # 2️⃣ If no app email match but it's bank alert
+        if is_bank_alert:
+            amount = extract_amount(subject) or extract_amount(body)
+            if amount and amount >= 100:
+                return {
+                    "merchant": "Zomato",
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
+
         return None
 
     # ---------------- SWIGGY ----------------
     if merchant == "Swiggy":
 
+        # 1️⃣ Strict order total match
         match = re.search(
             r"order total\s*[:\-]?\s*₹\s*([\d,]+(?:\.\d{1,2})?)",
             body,
@@ -119,7 +125,7 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # PDF fallback
+        # 2️⃣ PDF fallback
         pdf = extract_amount_from_pdf(email, service)
         if pdf and pdf.get("amount"):
             return {
@@ -130,13 +136,23 @@ def extract_spend(email: dict, service):
                 "source_id": source_id,
             }
 
+        # 3️⃣ Bank fallback
+        if is_bank_alert:
+            amount = extract_amount(subject) or extract_amount(body)
+            if amount and amount >= 100:
+                return {
+                    "merchant": "Swiggy",
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
+
         return None
 
     # ---------------- BANK-ONLY MERCHANTS ----------------
     if is_bank_alert:
-
         amount = extract_amount(subject) or extract_amount(body)
-
         if amount and amount >= 100:
             return {
                 "merchant": merchant,

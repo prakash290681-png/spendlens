@@ -52,7 +52,11 @@
 document.addEventListener("DOMContentLoaded", async () => {
 
   async function api(url) {
-    const res = await fetch(url, { credentials: "same-origin" });
+    const res = await fetch(url, {
+      credentials: "same-origin",
+      cache: "no-store"
+    });
+
     if (res.status === 401) {
       window.location.href = "/auth/login";
       return null;
@@ -79,10 +83,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function load(month) {
 
     // Reset UI first (important)
-    summaryDiv.innerHTML = "Loading...";
-    alertsDiv.innerHTML = "";
-    recurringDiv.innerHTML = "";
-    aiDiv.innerHTML = "";
+    summaryDiv.innerHTML = "Loading summary...";
+    alertsDiv.innerHTML = "Loading alerts...";
+    recurringDiv.innerHTML = "Loading recurring spends...";
+    aiDiv.innerHTML = "Generating insights...";
+
 
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 

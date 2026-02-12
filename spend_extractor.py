@@ -74,10 +74,11 @@ def extract_spend(email: dict, service):
 
         # 1️⃣ Try strict order total from body
         match = re.search(
-            r"(order total|amount paid|grand total)[^\d₹]*₹\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(order total|grand total|amount paid|total payable)[^\d₹]*₹\s*([\d,]+(?:\.\d{1,2})?)",
             body,
             re.IGNORECASE
         )
+
 
         if match:
             amount = float(match.group(2).replace(",", ""))

@@ -118,8 +118,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
         f'after:{start} before:{end}'
     )
     print("QUERY:", query)
-    print("EMAIL COUNT:", len(emails))
-
+    
     emails = []
     page_token = None
 
@@ -140,8 +139,8 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
         if not page_token:
             break
 
-    print(f"📬 GMAIL FETCHED {len(emails)} EMAILS")
-
+    print("EMAIL COUNT:", len(emails))
+    
     if return_service:
         return emails, service
 

@@ -177,6 +177,10 @@ def monthly_summary(request: Request, month: str | None = None):
 
     db.close()
 
+    print("DEBUG MONTH:", month)
+    print("DEBUG RANGE:", start, end)
+    print("DEBUG TOTAL:", total_spent)
+
     return {
         "total_spent": round(total_spent, 2),
         "by_category": [
@@ -442,3 +446,16 @@ def ai_insights(request: Request, month: str | None = None):
     db.close()
 
     return insights
+# ---------------------------
+# TEMPORARY DB RESET ROUTE
+# ---------------------------
+from database import SessionLocal
+from models import Transaction
+
+@app.get("/wipe")
+def wipe():
+    db = SessionLocal()
+    db.query(Transaction).delete()
+    db.commit()
+    db.close()
+    return {"status": "all transactions deleted"}

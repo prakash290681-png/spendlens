@@ -3,7 +3,7 @@ load_dotenv()
 
 import os
 from datetime import datetime
-
+from calendar import monthrange
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -20,15 +20,22 @@ from admin import router as admin_router
 # -------------------------------------------------
 # Date Helpers
 # -------------------------------------------------
-def get_month_range(month_str: str | None):
-    if month_str:
-        year, mon = map(int, month_str.split("-"))
+def get_month_range(month: str | None):
+    if not month:
+        today = datetime.utcnow()
+        year = today.year
+        mon = today.month
     else:
-        today = datetime.today()
-        year, mon = today.year, today.month
+        year, mon = map(int, month.split("-"))
 
     start = datetime(year, mon, 1)
-    end = datetime(year + (mon == 12), (mon % 12) + 1, 1)
+
+    # FIRST DAY OF NEXT MONTH (clean & safe)
+    if mon == 12:
+        end = datetime(year + 1, 1, 1)
+    else:
+        end = datetime(year, mon + 1, 1)
+
     return start, end
 
 

@@ -2,7 +2,9 @@
 <html>
 <head>
   <title>SpendLens Dashboard</title>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body { font-family: Arial; margin: 40px; }
     .layout { display:flex; gap:20px; align-items:flex-start; }
@@ -55,10 +57,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function api(url) {
     const res = await fetch(url, { credentials: "same-origin" });
+
     if (res.status === 401) {
       window.location.href = "/auth/login";
       return null;
     }
+
     return res.json();
   }
 
@@ -80,59 +84,74 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function load(month) {
 
-    label.innerText = `Your spending summary (${formatLabel(month)})`;
+    try {
 
-    const summary = await api(`/summary/monthly?month=${month}`);
-    if (!summary) return;
+      label.innerText = `Your spending summary (${formatLabel(month)})`;
 
-    summaryDiv.innerHTML = `
-      <h3>Total Spend</h3>
-      <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
-    `;
+      const summary = await api(`/summary/monthly?month=${month}`);
+      if (!summary) return;
 
-    if (categoryChart) categoryChart.destroy();
-    if (merchantChart) merchantChart.destroy();
+      summaryDiv.innerHTML = `
+        <h3>Total Spend</h3>
+        <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+      `;
 
-    const catCtx = document.getElementById("categoryChart");
-    const merCtx = document.getElementById("merchantChart");
+      // Destroy old charts
+      if (categoryChart) categoryChart.destroy();
+      if (merchantChart) merchantChart.destroy();
 
-    categoryChart = new Chart(catCtx, {
-      type: "doughnut",
-      data: {
-        labels: summary.by_category.map(c => c.category),
-        datasets: [{ data: summary.by_category.map(c => c.total) }]
+      const catCtx = document.getElementById("categoryChart");
+      const merCtx = document.getElementById("merchantChart");
+
+      if (catCtx && summary.by_category.length > 0) {
+        categoryChart = new Chart(catCtx, {
+          type: "doughnut",
+          data: {
+            labels: summary.by_category.map(c => c.category),
+            datasets: [{
+              data: summary.by_category.map(c => c.total)
+            }]
+          }
+        });
       }
-    });
 
-    merchantChart = new Chart(merCtx, {
-      type: "bar",
-      data: {
-        labels: summary.by_merchant.map(m => m.merchant),
-        datasets: [{ data: summary.by_merchant.map(m => m.total) }]
+      if (merCtx && summary.by_merchant.length > 0) {
+        merchantChart = new Chart(merCtx, {
+          type: "bar",
+          data: {
+            labels: summary.by_merchant.map(m => m.merchant),
+            datasets: [{
+              data: summary.by_merchant.map(m => m.total)
+            }]
+          }
+        });
       }
-    });
 
-    const alertData = await api(`/alerts/monthly?month=${month}`);
-    alertsDiv.innerHTML =
-      !alertData || alertData.alerts.length === 0
-        ? "✅ No budget alerts"
-        : alertData.alerts.map(a =>
-            `<div><strong>${a.category}</strong> ₹${a.spent}/${a.limit}</div>`
-          ).join("");
+      const alertData = await api(`/alerts/monthly?month=${month}`);
+      alertsDiv.innerHTML =
+        !alertData || !alertData.alerts || alertData.alerts.length === 0
+          ? "✅ No budget alerts"
+          : alertData.alerts.map(a =>
+              `<div><strong>${a.category}</strong> ₹${a.spent}/${a.limit}</div>`
+            ).join("");
 
-    const recurring = await api(`/insights/recurring`);
-    recurringDiv.innerHTML =
-      !recurring || recurring.length === 0
-        ? "No recurring merchants detected"
-        : recurring.map(r =>
-            `<div>${r.merchant} – ₹${r.last_amount}</div>`
-          ).join("");
+      const recurring = await api(`/insights/recurring`);
+      recurringDiv.innerHTML =
+        !recurring || recurring.length === 0
+          ? "No recurring merchants detected"
+          : recurring.map(r =>
+              `<div>${r.merchant} – ₹${r.last_amount}</div>`
+            ).join("");
 
-    const ai = await api(`/insights/ai?month=${month}`);
-    aiDiv.innerHTML =
-      !ai || ai.length === 0
-        ? "No insights yet."
-        : ai.map(i => `<div>${i}</div>`).join("");
+      const ai = await api(`/insights/ai?month=${month}`);
+      aiDiv.innerHTML =
+        !ai || ai.length === 0
+          ? "No insights yet."
+          : ai.map(i => `<div>${i}</div>`).join("");
+
+    } catch (err) {
+      console.error("Load error:", err);
+    }
   }
 
   const today = new Date();

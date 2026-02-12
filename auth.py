@@ -27,6 +27,19 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
 ]
 
+
+# -------------------------------------------------
+# Utility: Previous Month Helper
+# -------------------------------------------------
+def get_previous_month(month_str: str) -> str:
+    year, month = map(int, month_str.split("-"))
+
+    if month == 1:
+        return f"{year - 1}-12"
+    else:
+        return f"{year}-{str(month - 1).zfill(2)}"
+
+
 # -------------------------------------------------
 # Login
 # -------------------------------------------------
@@ -56,10 +69,11 @@ def login():
 
 
 # -------------------------------------------------
-# OAuth Callback (CORRECT & SAFE)
+# OAuth Callback
 # -------------------------------------------------
 @router.get("/auth/callback")
 def callback(request: Request, background_tasks: BackgroundTasks):
+
     flow = Flow.from_client_config(
         {
             "web": {
@@ -78,6 +92,7 @@ def callback(request: Request, background_tasks: BackgroundTasks):
     flow.fetch_token(authorization_response=str(request.url))
     credentials = flow.credentials
 
+    # Save token in session
     request.session["access_token"] = credentials.token
 
     # 2️⃣ Verify identity
@@ -85,14 +100,13 @@ def callback(request: Request, background_tasks: BackgroundTasks):
         credentials.id_token,
         google_requests.Request(),
         GOOGLE_CLIENT_ID,
-        clock_skew_in_seconds=30, # required for local dev
+        clock_skew_in_seconds=30,
     )
-
 
     email = token_info["email"]
     name = token_info.get("name")
 
-    # 3️⃣ User upsert
+    # 3️⃣ Upsert user
     db = SessionLocal()
     user = db.query(User).filter(User.email == email).first()
 
@@ -102,16 +116,14 @@ def callback(request: Request, background_tasks: BackgroundTasks):
         db.commit()
         db.refresh(user)
 
-    # 4️⃣ Session MUST be set BEFORE ingest
     request.session["user_id"] = user.id
     request.session["user_email"] = user.email
-    request.session["ingesting"] = True
 
     db.close()
 
-    # 5️⃣ Run ingest in BACKGROUND (no DB lock)
-    
-    current_month = datetime.now().strftime("%Y-%m")
+    # 4️⃣ Background ingest for current + previous month
+    current_month = datetime.utcnow().strftime("%Y-%m")
+    previous_month = get_previous_month(current_month)
 
     background_tasks.add_task(
         ingest_gmail_spends,
@@ -120,6 +132,12 @@ def callback(request: Request, background_tasks: BackgroundTasks):
         current_month,
     )
 
+    background_tasks.add_task(
+        ingest_gmail_spends,
+        credentials.token,
+        user.id,
+        previous_month,
+    )
 
     return RedirectResponse("/dashboard")
 
@@ -132,21 +150,25 @@ def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/")
 
+
 # -------------------------------------------------
-# Ingest for selected month (used by date picker)
+# Ingest for selected month (optional manual trigger)
 # -------------------------------------------------
 @router.post("/ingest/monthly")
-def ingest_for_month(request: Request, month: str):
-
-    print("SESSION:", request.session)
+def ingest_for_month(request: Request, background_tasks: BackgroundTasks, month: str):
 
     if "access_token" not in request.session:
-        print("NO TOKEN IN SESSION")
-        return {"error": "no token"}
+        return {"error": "not authenticated"}
 
     user_id = request.session["user_id"]
     token = request.session["access_token"]
 
-    ingest_gmail_spends(token, user_id, month)
+    # 🔥 Always run ingest in background
+    background_tasks.add_task(
+        ingest_gmail_spends,
+        token,
+        user_id,
+        month,
+    )
 
-    return {"status": "done"}
+    return {"status": "started"}

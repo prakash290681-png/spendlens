@@ -48,9 +48,10 @@ def extract_fallback_amount(text: str):
 # ---------------- MAIN ----------------
 
 def extract_spend(email: dict, service):
-    sender = email.get("From", "")
-    subject = email.get("Subject", "")
-    body = email.get("Body", "")
+
+    sender = email.get("From", "") or ""
+    subject = email.get("Subject", "") or ""
+    body = email.get("Body", "") or ""
     date = normalize_date(email.get("Date"))
     source_id = email.get("id")
 
@@ -65,40 +66,50 @@ def extract_spend(email: dict, service):
 
     category = detect_category(merchant)
 
-    # ---- detect bank alert ----
+    # Detect bank alerts
+    combined_text = (sender + subject).lower()
     is_bank_alert = any(
-        k in (sender + subject).lower()
-        for k in ["hdfc", "icici", "axis", "sbi"]
+        bank in combined_text
+        for bank in ["hdfc", "icici", "axis", "sbi"]
     )
 
+    # ❌ NEVER ingest bank alerts for Swiggy/Zomato
+    if is_bank_alert and merchant in ("Swiggy", "Zomato"):
+        return None
 
     # ---------------- ZOMATO ----------------
     if merchant == "Zomato":
-        amount = extract_amount(body) or extract_amount(subject)
-        if not amount or amount < 100:
-            return None
 
-        return {
-            "merchant": "Zomato",
-            "category": category,
-            "amount": round(amount, 2),
-            "date": date,
-            "source_id": source_id,
-        }
+        match = re.search(
+            r"(order total|amount paid|grand total)[^\d₹]*₹\s*([\d,]+(?:\.\d{1,2})?)",
+            body,
+            re.IGNORECASE
+        )
+
+        if match:
+            amount = float(match.group(2).replace(",", ""))
+            if amount >= 100:
+                return {
+                    "merchant": "Zomato",
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
+
+        return None
 
     # ---------------- SWIGGY ----------------
-        # ---------------- SWIGGY ----------------
     if merchant == "Swiggy":
 
-        # 1️⃣ STRICT Order Total match only
-        order_total_match = re.search(
+        match = re.search(
             r"order total\s*[:\-]?\s*₹\s*([\d,]+(?:\.\d{1,2})?)",
             body,
             re.IGNORECASE
         )
 
-        if order_total_match:
-            amount = float(order_total_match.group(1).replace(",", ""))
+        if match:
+            amount = float(match.group(1).replace(",", ""))
             if amount >= 100:
                 return {
                     "merchant": "Swiggy",
@@ -108,7 +119,7 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # 2️⃣ PDF fallback
+        # PDF fallback
         pdf = extract_amount_from_pdf(email, service)
         if pdf and pdf.get("amount"):
             return {
@@ -119,25 +130,13 @@ def extract_spend(email: dict, service):
                 "source_id": source_id,
             }
 
-        # 3️⃣ If this is BANK alert and no app email detected
-        if is_bank_alert:
-            amount = extract_amount(subject) or extract_amount(body)
-            if amount and amount >= 100:
-                return {
-                    "merchant": "Swiggy",
-                    "category": category,
-                    "amount": round(amount, 2),
-                    "date": date,
-                    "source_id": source_id,
-                }
-
         return None
 
-
     # ---------------- BANK-ONLY MERCHANTS ----------------
-    # (ATM, transfers, utilities, etc.)
     if is_bank_alert:
+
         amount = extract_amount(subject) or extract_amount(body)
+
         if amount and amount >= 100:
             return {
                 "merchant": merchant,

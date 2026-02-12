@@ -102,7 +102,17 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
     year, mon = map(int, month.split("-"))
 
     start = f"{year}/{mon:02d}/01"
-    end = f"{year}/{mon:02d}/{monthrange(year, mon)[1]}"
+
+    # FIRST DAY OF NEXT MONTH
+    if mon == 12:
+        end_year = year + 1
+        end_month = 1
+    else:
+        end_year = year
+        end_month = mon + 1
+
+    end = f"{end_year}/{end_month:02d}/01"
+
 
     query = (
         '('
@@ -140,7 +150,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
             break
 
     print("EMAIL COUNT:", len(emails))
-    
+
     if return_service:
         return emails, service
 

@@ -164,19 +164,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   const alertData = await api(`/alerts/monthly?month=${month}`);
   if (requestId !== requestCounter) return;
 
-    alertsDiv.innerHTML =
-      !alertData || alertData.alerts.length === 0
-        ? "✅ No budget alerts"
-        : alertData.alerts.map(a => `
+  alertsDiv.innerHTML =
+    !alertData || alertData.alerts.length === 0
+      ? "✅ No budget alerts"
+      : alertData.alerts.map(a => {
+          const percent = Number(a.percent || 0);
+          const over = Number(a.over_by ?? percent - 100);
+
+          return `
             <div style="margin-bottom:8px;">
-              <strong>${a.category}</strong> ₹${a.spent}/${a.limit} (${a.percent}%)
-              ${a.status === "exceeded"
-                ? `<div style="color:#d32f2f;">⚠️ You exceeded the budget by ${a.over_by}%</div>`
-                : `<div style="color:#b26a00;">Heads up — nearing limit</div>`
+              <strong>${a.category}</strong> ₹${a.spent}/${a.limit} (${percent}%)
+              ${
+                a.status === "exceeded"
+                  ? `<div style="color:#d32f2f;">⚠️ You exceeded the budget by ${over.toFixed(1)}%</div>`
+                  : `<div style="color:#b26a00;">Heads up — nearing limit</div>`
               }
             </div>
-          `).join("");
-
+          `;
+        }).join("");  
+    
 
   // ---------------- AI ----------------
   try {

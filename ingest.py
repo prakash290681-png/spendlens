@@ -28,6 +28,22 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
 
             spend["user_id"] = user_id
 
+             # 🔥 DUPLICATE CHECK (REAL FIX)
+            existing = db.query(Transaction).filter(
+                Transaction.user_id == user_id,
+                Transaction.merchant == spend["merchant"],
+                Transaction.amount == spend["amount"],
+                Transaction.date >= spend["date"] - timedelta(hours=2),
+                Transaction.date <= spend["date"] + timedelta(hours=2),
+            ).first()
+
+            if existing:
+                continue
+
+            db.add(Transaction(**spend))
+            db.commit()
+            inserted += 1
+                
             print(
                 "TRY INSERT:",
                 spend["merchant"],

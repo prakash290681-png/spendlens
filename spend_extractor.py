@@ -108,15 +108,16 @@ def extract_spend(email: dict, service):
     # ---------------- SWIGGY ----------------
     if merchant == "Swiggy":
 
-        # 1️⃣ Strict order total match
+        clean_body = re.sub(r"\s+", " ", body)
+
         match = re.search(
-            r"order total\s*[:\-]?\s*₹\s*([\d,]+(?:\.\d{1,2})?)",
-            body,
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)[^\d₹]{0,50}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body,
             re.IGNORECASE
         )
 
         if match:
-            amount = float(match.group(1).replace(",", ""))
+            amount = float(match.group(2).replace(",", ""))
             if amount >= 100:
                 return {
                     "merchant": "Swiggy",
@@ -126,41 +127,18 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # 2️⃣ PDF fallback
-        pdf = extract_amount_from_pdf(email, service)
-        if pdf and pdf.get("amount"):
-            return {
-                "merchant": "Swiggy",
-                "category": category,
-                "amount": round(pdf["amount"], 2),
-                "date": date,
-                "source_id": source_id,
-            }
-
-        # 3️⃣ Bank fallback
-        if is_bank_alert:
-            amount = extract_amount(subject) or extract_amount(body)
-            if amount and amount >= 100:
+        # fallback: choose LARGEST ₹ amount in email
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        if amounts:
+            values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
+            if values:
                 return {
                     "merchant": "Swiggy",
                     "category": category,
-                    "amount": round(amount, 2),
+                    "amount": round(max(values), 2),
                     "date": date,
                     "source_id": source_id,
                 }
 
         return None
 
-    # ---------------- BANK-ONLY MERCHANTS ----------------
-    if is_bank_alert:
-        amount = extract_amount(subject) or extract_amount(body)
-        if amount and amount >= 100:
-            return {
-                "merchant": merchant,
-                "category": category,
-                "amount": round(amount, 2),
-                "date": date,
-                "source_id": source_id,
-            }
-
-    return None

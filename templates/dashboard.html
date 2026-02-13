@@ -26,7 +26,6 @@
   <div style="flex:1; min-width:350px;">
     <div class="card" id="summary">Loading summary...</div>
     <div class="card" id="alerts">Loading alerts...</div>
-    <div class="card" id="recurring">Loading recurring spends...</div>
     <div class="card" id="aiInsights">Generating insights...</div>
   </div>
 
@@ -68,7 +67,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const label = document.getElementById("month-label");
   const summaryDiv = document.getElementById("summary");
   const alertsDiv = document.getElementById("alerts");
-  const recurringDiv = document.getElementById("recurring");
   const aiDiv = document.getElementById("aiInsights");
 
   let categoryChart = null;
@@ -102,7 +100,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Reset UI immediately
     summaryDiv.innerHTML = "Loading summary...";
     alertsDiv.innerHTML = "Loading alerts...";
-    recurringDiv.innerHTML = "Loading recurring spends...";
     aiDiv.innerHTML = "Generating insights...";
     resetCharts();
 
@@ -151,13 +148,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             `<div><strong>${a.category}</strong> ₹${a.spent}/${a.limit} (${a.percent}%)</div>`
           ).join("");
 
-    const recurring = await api(`/insights/recurring`);
-    recurringDiv.innerHTML =
-      !recurring || recurring.length === 0
-        ? "No recurring merchants detected"
-        : recurring.map(r =>
-            `<div>${r.merchant} – ₹${r.last_amount}</div>`
-          ).join("");
+    recurringDiv.innerHTML = "";
 
     const ai = await api(`/insights/ai?month=${month}`);
     aiDiv.innerHTML =

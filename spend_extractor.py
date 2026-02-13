@@ -72,14 +72,14 @@ def extract_spend(email: dict, service):
     # ---------------- ZOMATO ----------------
     if merchant == "Zomato":
 
-        # 1️⃣ Try strict order total from body
+        clean_body = re.sub(r"\s+", " ", body)
+
         match = re.search(
-            r"(order\s*total|amount\s*paid|grand\s*total)[^\d₹]{0,80}₹\s*([\d,]+(?:\.\d{1,2})?)",
-            body,
+            r"(order\s*total|amount\s*paid|grand\s*total|total\s*₹?)"
+            r"[^\d₹]{0,80}₹?\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body,
             re.IGNORECASE
         )
-
-
 
         if match:
             amount = float(match.group(2).replace(",", ""))
@@ -91,6 +91,25 @@ def extract_spend(email: dict, service):
                     "date": date,
                     "source_id": source_id,
                 }
+
+        # fallback
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
+
+        if values:
+            values.sort(reverse=True)
+            amount = values[1] if len(values) > 1 else values[0]
+
+            return {
+                "merchant": "Zomato",
+                "category": category,
+                "amount": round(amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
+
+        return None
+
 
         # 2️⃣ If no app email match but it's bank alert
         if is_bank_alert:

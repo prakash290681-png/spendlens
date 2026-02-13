@@ -107,6 +107,12 @@ def get_current_user(request: Request) -> int:
 def health():
     return {"status": "ok"}
 
+@app.get("/system/ready")
+def system_ready():
+    # simplest version: always ready
+    # later you can wire this to ingestion status
+    return {"ready": True}
+
 
 # -------------------------------------------------
 # Dashboard

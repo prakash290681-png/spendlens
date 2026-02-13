@@ -72,6 +72,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let categoryChart = null;
   let merchantChart = null;
 
+  let activeMonthRequest = null;
+
   function formatLabel(monthStr) {
     const [y, m] = monthStr.split("-");
     const d = new Date(y, m - 1, 1);
@@ -96,6 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function load(month) {
+    activeMonthRequest = month;
 
     // Reset UI immediately
     summaryDiv.innerHTML = "Loading summary...";
@@ -106,6 +109,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 
     const summary = await api(`/summary/monthly?month=${month}`);
+    if (activeMonthRequest !== month) return;
+
     if (!summary) return;
 
     summaryDiv.innerHTML = `
@@ -141,6 +146,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
 
     const alertData = await api(`/alerts/monthly?month=${month}`);
+    if (activeMonthRequest !== month) return;
+
     alertsDiv.innerHTML =
       !alertData || alertData.alerts.length === 0
         ? "✅ No budget alerts"
@@ -150,11 +157,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     recurringDiv.innerHTML = "";
 
-    const ai = await api(`/insights/ai?month=${month}`);
-    aiDiv.innerHTML =
-      !ai || ai.length === 0
-        ? "No insights yet."
-        : ai.map(i => `<div>${i}</div>`).join("");
+    try {
+      const ai = await api(`/insights/ai?month=${month}`);
+      if (activeMonthRequest !== month) return;
+
+      aiDiv.innerHTML =
+        !ai || ai.length === 0
+          ? "No insights yet."
+          : ai.map(i => `<div>${i}</div>`).join("");
+    } catch (e) {
+      aiDiv.innerHTML = "No insights yet.";
+    }
+
   }
 
   const today = new Date();

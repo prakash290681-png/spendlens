@@ -111,9 +111,10 @@ def extract_spend(email: dict, service):
 
         clean_body = re.sub(r"\s+", " ", body)
 
-        # 1️⃣ Strict label match
+        # 1️⃣ Strong label match
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)[^\d₹]{0,80}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|total\s*₹?)"
+            r"[^\d₹]{0,80}₹?\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
@@ -129,7 +130,25 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # 2️⃣ Bank fallback (ONLY if bank alert)
+        # 2️⃣ If email subject contains "delivered" or "order placed"
+        if "order" in subject.lower():
+            amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+            values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
+
+            if values:
+                # choose second largest instead of max (avoids item total)
+                values.sort(reverse=True)
+                amount = values[1] if len(values) > 1 else values[0]
+
+                return {
+                    "merchant": "Swiggy",
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
+
+        # 3️⃣ Bank fallback
         if is_bank_alert:
             amount = extract_amount(subject) or extract_amount(body)
             if amount and amount >= 100:

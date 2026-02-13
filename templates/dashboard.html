@@ -24,10 +24,10 @@
 <div class="layout">
 
   <div style="flex:1; min-width:350px;">
-    <div class="card" id="summary"></div>
-    <div class="card" id="alerts"></div>
-    <div class="card" id="recurring"></div>
-    <div class="card" id="aiInsights"></div>
+    <div class="card" id="summary">Loading summary...</div>
+    <div class="card" id="alerts">Loading alerts...</div>
+    <div class="card" id="recurring">Loading recurring spends...</div>
+    <div class="card" id="aiInsights">Generating insights...</div>
   </div>
 
   <div style="flex:1.3; min-width:350px;">
@@ -80,14 +80,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     return d.toLocaleString("default", { month: "long", year: "numeric" });
   }
 
+  function resetCharts() {
+    if (categoryChart) {
+      categoryChart.destroy();
+      categoryChart = null;
+    }
+    if (merchantChart) {
+      merchantChart.destroy();
+      merchantChart = null;
+    }
+
+    const catCtx = document.getElementById("categoryChart").getContext("2d");
+    const merCtx = document.getElementById("merchantChart").getContext("2d");
+
+    catCtx.clearRect(0, 0, 1000, 1000);
+    merCtx.clearRect(0, 0, 1000, 1000);
+  }
+
   async function load(month) {
 
-    // Reset UI first (important)
+    // Reset UI immediately
     summaryDiv.innerHTML = "Loading summary...";
     alertsDiv.innerHTML = "Loading alerts...";
     recurringDiv.innerHTML = "Loading recurring spends...";
     aiDiv.innerHTML = "Generating insights...";
-
+    resetCharts();
 
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 
@@ -99,16 +116,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
     `;
 
-    if (categoryChart) categoryChart.destroy();
-    if (merchantChart) merchantChart.destroy();
-
+    // Build charts fresh every time
     categoryChart = new Chart(
       document.getElementById("categoryChart"),
       {
         type: "doughnut",
         data: {
           labels: summary.by_category.map(c => c.category),
-          datasets: [{ data: summary.by_category.map(c => c.total) }]
+          datasets: [{
+            data: summary.by_category.map(c => c.total)
+          }]
         }
       }
     );
@@ -119,7 +136,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         type: "bar",
         data: {
           labels: summary.by_merchant.map(m => m.merchant),
-          datasets: [{ data: summary.by_merchant.map(m => m.total) }]
+          datasets: [{
+            data: summary.by_merchant.map(m => m.total)
+          }]
         }
       }
     );

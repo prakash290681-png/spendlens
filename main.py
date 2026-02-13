@@ -20,17 +20,27 @@ from admin import router as admin_router
 # -------------------------------------------------
 # Date Helpers
 # -------------------------------------------------
-def get_month_range(month: str | None):
-    if not month:
-        today = datetime.utcnow()
-        year = today.year
-        mon = today.month
-    else:
-        year, mon = map(int, month.split("-"))
+from datetime import datetime
+from calendar import monthrange
 
+
+def get_month_range(month: str | None):
+    """
+    Returns:
+        start (inclusive)
+        end   (exclusive)
+    """
+
+    if month:
+        year, mon = map(int, month.split("-"))
+    else:
+        today = datetime.today()
+        year, mon = today.year, today.month
+
+    # start of month
     start = datetime(year, mon, 1)
 
-    # FIRST DAY OF NEXT MONTH (clean & safe)
+    # start of next month (exclusive end boundary)
     if mon == 12:
         end = datetime(year + 1, 1, 1)
     else:

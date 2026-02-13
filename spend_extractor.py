@@ -74,10 +74,11 @@ def extract_spend(email: dict, service):
 
         # 1️⃣ Try strict order total from body
         match = re.search(
-            r"(order total|grand total|amount paid|total payable)[^\d₹]*₹\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(order\s*total|amount\s*paid|grand\s*total)[^\d₹]{0,80}₹\s*([\d,]+(?:\.\d{1,2})?)",
             body,
             re.IGNORECASE
         )
+
 
 
         if match:
@@ -110,8 +111,9 @@ def extract_spend(email: dict, service):
 
         clean_body = re.sub(r"\s+", " ", body)
 
+        # 1️⃣ Strict label match
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)[^\d₹]{0,50}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)[^\d₹]{0,80}₹\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
@@ -127,15 +129,14 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # fallback: choose LARGEST ₹ amount in email
-        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
-        if amounts:
-            values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
-            if values:
+        # 2️⃣ Bank fallback (ONLY if bank alert)
+        if is_bank_alert:
+            amount = extract_amount(subject) or extract_amount(body)
+            if amount and amount >= 100:
                 return {
                     "merchant": "Swiggy",
                     "category": category,
-                    "amount": round(max(values), 2),
+                    "amount": round(amount, 2),
                     "date": date,
                     "source_id": source_id,
                 }

@@ -71,6 +71,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let categoryChart = null;
   let merchantChart = null;
+  let requestCounter = 0;
+
 
   let activeMonthRequest = null;
 
@@ -98,78 +100,81 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function load(month) {
-    activeMonthRequest = month;
 
-    // Reset UI immediately
-    summaryDiv.innerHTML = "Loading summary...";
-    alertsDiv.innerHTML = "Loading alerts...";
-    aiDiv.innerHTML = "Generating insights...";
-    resetCharts();
+  const requestId = ++requestCounter;
 
-    label.innerText = `Your spending summary (${formatLabel(month)})`;
+  // Reset UI immediately
+  summaryDiv.innerHTML = "Loading summary...";
+  alertsDiv.innerHTML = "Loading alerts...";
+  aiDiv.innerHTML = "Generating insights...";
+  resetCharts();
 
-    const summary = await api(`/summary/monthly?month=${month}`);
-    if (activeMonthRequest !== month) return;
+  label.innerText = `Your spending summary (${formatLabel(month)})`;
 
-    if (!summary) return;
+  // ---------------- summary ----------------
+  const summary = await api(`/summary/monthly?month=${month}`);
+  if (requestId !== requestCounter) return;
+  if (!summary) return;
 
-    summaryDiv.innerHTML = `
-      <h3>Total Spend</h3>
-      <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
-    `;
+  summaryDiv.innerHTML = `
+    <h3>Total Spend</h3>
+    <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+  `;
 
-    // Build charts fresh every time
-    categoryChart = new Chart(
-      document.getElementById("categoryChart"),
-      {
-        type: "doughnut",
-        data: {
-          labels: summary.by_category.map(c => c.category),
-          datasets: [{
-            data: summary.by_category.map(c => c.total)
-          }]
-        }
+  // charts
+  categoryChart = new Chart(
+    document.getElementById("categoryChart"),
+    {
+      type: "doughnut",
+      data: {
+        labels: summary.by_category.map(c => c.category),
+        datasets: [{
+          data: summary.by_category.map(c => c.total)
+        }]
       }
-    );
-
-    merchantChart = new Chart(
-      document.getElementById("merchantChart"),
-      {
-        type: "bar",
-        data: {
-          labels: summary.by_merchant.map(m => m.merchant),
-          datasets: [{
-            data: summary.by_merchant.map(m => m.total)
-          }]
-        }
-      }
-    );
-
-    const alertData = await api(`/alerts/monthly?month=${month}`);
-    if (activeMonthRequest !== month) return;
-
-    alertsDiv.innerHTML =
-      !alertData || alertData.alerts.length === 0
-        ? "✅ No budget alerts"
-        : alertData.alerts.map(a =>
-            `<div><strong>${a.category}</strong> ₹${a.spent}/${a.limit} (${a.percent}%)</div>`
-          ).join("");
-
-    recurringDiv.innerHTML = "";
-
-    try {
-      const ai = await api(`/insights/ai?month=${month}`);
-      if (activeMonthRequest !== month) return;
-
-      aiDiv.innerHTML =
-        !ai || ai.length === 0
-          ? "No insights yet."
-          : ai.map(i => `<div>${i}</div>`).join("");
-    } catch (e) {
-      aiDiv.innerHTML = "No insights yet.";
     }
+  );
 
+  merchantChart = new Chart(
+    document.getElementById("merchantChart"),
+    {
+      type: "bar",
+      data: {
+        labels: summary.by_merchant.map(m => m.merchant),
+        datasets: [{
+          data: summary.by_merchant.map(m => m.total)
+        }]
+      }
+    }
+  );
+
+  // ---------------- alerts ----------------
+  const alertData = await api(`/alerts/monthly?month=${month}`);
+  if (requestId !== requestCounter) return;
+
+  alertsDiv.innerHTML =
+    !alertData || alertData.alerts.length === 0
+      ? "✅ No budget alerts"
+      : alertData.alerts.map(a =>
+          `<div><strong>${a.category}</strong> ₹${a.spent}/${a.limit} (${a.percent}%)</div>`
+        ).join("");
+
+  // ---------------- AI ----------------
+  try {
+    const ai = await api(`/insights/ai?month=${month}`);
+    if (requestId !== requestCounter) return;
+
+    aiDiv.innerHTML =
+      !ai || ai.length === 0
+        ? "No insights yet."
+        : ai.map(i => `<div>${i}</div>`).join("");
+
+  } catch {
+    if (requestId !== requestCounter) return;
+    aiDiv.innerHTML = "No insights yet.";
   }
+}
+
 
   const today = new Date();
   const defaultMonth =

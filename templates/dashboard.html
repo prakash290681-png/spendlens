@@ -7,6 +7,12 @@
     body { font-family: Arial; margin: 40px; }
     .layout { display:flex; gap:20px; align-items:flex-start; }
     .card { border:1px solid #ddd; padding:16px; margin-top:16px; }
+    .insight-item {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+      line-height: 1.4;
+    }
+
   </style>
 </head>
 
@@ -115,6 +121,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const summary = await api(`/summary/monthly?month=${month}`);
   if (requestId !== requestCounter) return;
   if (!summary) return;
+  
+  if (summary.total_spent === 0) {
+    setTimeout(() => {
+      if (requestId === requestCounter) load(month);
+    }, 3000);
+  }
 
   summaryDiv.innerHTML = `
     <h3>Total Spend</h3>
@@ -167,7 +179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     aiDiv.innerHTML =
       !ai || ai.length === 0
         ? "No insights yet."
-        : ai.map(i => `<div>${i}</div>`).join("");
+        : ai.slice(0,3).map(i => `<div class="insight-item">💡 ${i}</div>`).join("");
 
   } catch {
     if (requestId !== requestCounter) return;

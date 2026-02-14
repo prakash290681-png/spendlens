@@ -4,10 +4,11 @@ def detect_merchant(text):
 
     t = text.lower()
 
-    # ---- Instamart must match BEFORE swiggy ----
+    # 🥇 MOST SPECIFIC FIRST
     if "instamart" in t:
         return "Swiggy Instamart"
 
+    # 🥈 then general brands
     if "zomato" in t:
         return "Zomato"
 

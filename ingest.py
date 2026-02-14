@@ -39,6 +39,7 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
             )
 
             if existing:
+                print("⛔ SKIP source duplicate:", spend["source_id"])
                 continue
 
 
@@ -56,6 +57,7 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
             )
 
             if existing:
+                print("⛔ SKIP fuzzy duplicate:", spend)
                 continue
 
             db.add(Transaction(**spend))

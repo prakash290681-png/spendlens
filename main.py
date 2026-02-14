@@ -58,7 +58,15 @@ def get_previous_month(month_str: str | None):
 app = FastAPI()
 
 from fastapi.staticfiles import StaticFiles
-app.mount("/static", StaticFiles(directory="static"), name="static")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+static_path = os.path.join(BASE_DIR, "static")
+
+if os.path.isdir(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+    print("✅ Static directory mounted:", static_path)
+else:
+    print("⚠️ Static directory missing:", static_path)
 
 
 app.add_middleware(

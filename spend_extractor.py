@@ -62,6 +62,10 @@ def extract_spend(email: dict, service):
         or detect_merchant(sender)
     )
 
+    full_text = f"{subject} {body} {sender}".lower()
+    if "instamart" in full_text:
+        merchant = "Swiggy Instamart"
+    
     print("---- MERCHANT DEBUG ----")
     print("SUBJECT:", subject)
     print("SENDER:", sender)

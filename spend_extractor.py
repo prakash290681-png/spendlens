@@ -107,6 +107,8 @@ def extract_spend(email: dict, service):
             values.sort(reverse=True)
             amount = values[1] if len(values) > 1 else values[0]
 
+            print("✅ RETURNING MERCHANT:", merchant)
+
             return {
                 "merchant": "Zomato",
                 "category": category,
@@ -165,6 +167,7 @@ def extract_spend(email: dict, service):
                 # choose second largest instead of max (avoids item total)
                 values.sort(reverse=True)
                 amount = values[1] if len(values) > 1 else values[0]
+                print("✅ RETURNING MERCHANT:", merchant)
 
                 return {
                     "merchant": "Swiggy",

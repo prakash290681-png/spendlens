@@ -26,6 +26,21 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
             spend["user_id"] = user_id
 
             # 🔥 STRONG DUPLICATE CHECK
+            # 1️⃣ absolute protection – same email
+            existing = (
+                db.query(Transaction)
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.source_id == spend["source_id"],
+                )
+                .first()
+            )
+
+            if existing:
+                continue
+
+
+            # 2️⃣ fallback fuzzy match
             existing = (
                 db.query(Transaction)
                 .filter(

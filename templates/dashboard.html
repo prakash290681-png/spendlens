@@ -11,9 +11,12 @@
       padding: 8px 0;
       border-bottom: 1px solid #eee;
       line-height: 1.4;
-    }
-
+    }  
+   
   </style>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#111827">
+
 </head>
 
 <body>
@@ -215,6 +218,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
 });
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/static/sw.js")
+    .then(() => console.log("SW registered"))
+    .catch(err => console.log("SW failed", err));
+}
 </script>
 
 </body>

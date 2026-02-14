@@ -2,9 +2,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from calendar import monthrange
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +16,6 @@ from models import Base, Transaction
 from auth import router as auth_router
 from admin import router as admin_router
 
-
 # -------------------------------------------------
 # Date Helpers
 # -------------------------------------------------
@@ -25,35 +24,26 @@ from calendar import monthrange
 
 
 def get_month_range(month: str | None):
-    """
-    Returns:
-        start (inclusive)
-        end   (exclusive)
-    """
-
     if month:
         year, mon = map(int, month.split("-"))
     else:
-        today = datetime.today()
+        today = datetime.utcnow()
         year, mon = today.year, today.month
 
-    # start of month
-    start = datetime(year, mon, 1)
+    start = datetime(year, mon, 1, tzinfo=timezone.utc)
 
-    # start of next month (exclusive end boundary)
     if mon == 12:
-        end = datetime(year + 1, 1, 1)
+        end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
     else:
-        end = datetime(year, mon + 1, 1)
+        end = datetime(year, mon + 1, 1, tzinfo=timezone.utc)
 
     return start, end
-
 
 def get_previous_month(month_str: str | None):
     if month_str:
         year, mon = map(int, month_str.split("-"))
     else:
-        today = datetime.today()
+        today = datetime.utcnow()
         year, mon = today.year, today.month
 
     if mon == 1:
@@ -61,10 +51,15 @@ def get_previous_month(month_str: str | None):
     return f"{year}-{str(mon-1).zfill(2)}"
 
 
+
 # -------------------------------------------------
 # App setup
 # -------------------------------------------------
 app = FastAPI()
+
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -197,6 +192,10 @@ def monthly_summary(request: Request, month: str | None = None):
     print("DEBUG RANGE:", start, end)
     print("DEBUG TOTAL:", total_spent)
 
+    row_users = {user_id}
+    print("AUTH USER:", user_id)
+    print("RETURNING DATA FOR:", row_users)
+
     return {
         "total_spent": round(total_spent, 2),
         "by_category": [
@@ -258,6 +257,7 @@ def monthly_alerts(request: Request, month: str | None = None):
                 "spent": round(spent, 2),
                 "limit": limit,
                 "percent": percent,
+                "over_by": round(percent - 100, 1) if percent >= 100 else 0,
                 "status": "exceeded" if percent >= 100 else "warning",
             })
 
@@ -469,9 +469,12 @@ from database import SessionLocal
 from models import Transaction
 
 @app.get("/wipe")
-def wipe():
+def wipe(request: Request):
+    user_id = get_current_user(request)  # must be logged in
+
     db = SessionLocal()
-    db.query(Transaction).delete()
+    db.query(Transaction).filter(Transaction.user_id == user_id).delete()
     db.commit()
     db.close()
-    return {"status": "all transactions deleted"}
+
+    return {"status": "your transactions deleted"}

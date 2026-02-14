@@ -486,3 +486,11 @@ def wipe(request: Request):
     db.close()
 
     return {"status": "your transactions deleted"}
+
+@app.get("/delete_tx/{source_id}")
+def delete_tx(source_id: str):
+    db = SessionLocal()
+    db.query(Transaction).filter(Transaction.source_id == source_id).delete()
+    db.commit()
+    db.close()
+    return {"deleted": source_id}

@@ -2,7 +2,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 
 
-def normalize_date(date_str: str | None):
+def normalize_date(date_str: str):
     if not date_str:
         return None
 

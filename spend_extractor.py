@@ -60,6 +60,11 @@ def extract_spend(email: dict, service):
         or detect_merchant(subject)
         or detect_merchant(body)
     )
+    print("---- MERCHANT DEBUG ----")
+    print("SUBJECT:", subject)
+    print("SENDER:", sender)
+    print("DETECTED:", merchant)
+    print("------------------------")
 
     if not merchant:
         return None

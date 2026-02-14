@@ -55,11 +55,13 @@ def extract_spend(email: dict, service):
     date = normalize_date(email.get("Date"))
     source_id = email.get("id")
 
+    # prioritize specific sources first
     merchant = (
-        detect_merchant(sender)
-        or detect_merchant(subject)
+        detect_merchant(subject)
         or detect_merchant(body)
+        or detect_merchant(sender)
     )
+
     print("---- MERCHANT DEBUG ----")
     print("SUBJECT:", subject)
     print("SENDER:", sender)

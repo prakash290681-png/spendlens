@@ -93,6 +93,8 @@ def callback(request: Request, background_tasks: BackgroundTasks):
     credentials = flow.credentials
 
     # Save token in session
+    # 🔥 rotate session – prevent cross user leakage
+    request.session.clear()
     request.session["access_token"] = credentials.token
 
     # 2️⃣ Verify identity

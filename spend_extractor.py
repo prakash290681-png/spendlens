@@ -92,7 +92,7 @@ def extract_spend(email: dict, service):
             amount = float(match.group(2).replace(",", ""))
             if amount >= 100:
                 return {
-                    "merchant": "Zomato",
+                    "merchant": merchant,
                     "category": category,
                     "amount": round(amount, 2),
                     "date": date,
@@ -110,7 +110,7 @@ def extract_spend(email: dict, service):
             print("✅ RETURNING MERCHANT:", merchant)
 
             return {
-                "merchant": "Zomato",
+                "merchant": merchant,
                 "category": category,
                 "amount": round(amount, 2),
                 "date": date,
@@ -125,7 +125,7 @@ def extract_spend(email: dict, service):
             amount = extract_amount(subject) or extract_amount(body)
             if amount and amount >= 100:
                 return {
-                    "merchant": "Zomato",
+                    "merchant": merchant,
                     "category": category,
                     "amount": round(amount, 2),
                     "date": date,
@@ -151,7 +151,7 @@ def extract_spend(email: dict, service):
             amount = float(match.group(2).replace(",", ""))
             if amount >= 100:
                 return {
-                    "merchant": "Swiggy",
+                    "merchant": merchant,
                     "category": category,
                     "amount": round(amount, 2),
                     "date": date,
@@ -170,7 +170,7 @@ def extract_spend(email: dict, service):
                 print("✅ RETURNING MERCHANT:", merchant)
 
                 return {
-                    "merchant": "Swiggy",
+                    "merchant": merchant,
                     "category": category,
                     "amount": round(amount, 2),
                     "date": date,
@@ -182,7 +182,7 @@ def extract_spend(email: dict, service):
             amount = extract_amount(subject) or extract_amount(body)
             if amount and amount >= 100:
                 return {
-                    "merchant": "Swiggy",
+                    "merchant": merchant,
                     "category": category,
                     "amount": round(amount, 2),
                     "date": date,

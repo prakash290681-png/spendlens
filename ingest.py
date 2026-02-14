@@ -19,6 +19,8 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
 
     try:
         for email in emails:
+            print("FETCHED SUBJECT:", email["Subject"])
+            
             spend = extract_spend(email, service)
             if not spend:
                 continue

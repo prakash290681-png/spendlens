@@ -111,8 +111,8 @@ def extract_spend(email: dict, service):
     if merchant == "Swiggy":
 
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)"
-            r"[^\d₹]{0,80}₹?\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|total)"
+            r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
@@ -128,7 +128,28 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # Bank fallback (ONLY if no app match)
+        # 🔥 SMART FALLBACK
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
+
+        if values:
+            values.sort(reverse=True)
+
+            # If multiple values, avoid picking the highest blindly
+            if len(values) >= 2:
+                amount = values[1]   # usually correct total
+            else:
+                amount = values[0]
+
+            return {
+                "merchant": merchant,
+                "category": category,
+                "amount": round(amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
+
+        # Bank fallback
         if is_bank_alert:
             amount = extract_amount(subject) or extract_amount(body)
             if amount and amount >= 100:

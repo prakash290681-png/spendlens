@@ -45,17 +45,14 @@ def extract_spend(email: dict, service):
     # ---------------- MERCHANT DETECTION ----------------
 
     # SUBJECT FIRST (most reliable)
-    merchant = detect_merchant(subject)
-
-    if not merchant:
-        merchant = detect_merchant(body)
-
-    if not merchant:
-        merchant = detect_merchant(sender)
-
-    # 🔥 Hard override — Instamart must win
+    # 🔥 Hard override — Instamart must win FIRST
     if "instamart" in full_text:
         merchant = "Swiggy Instamart"
+    else:
+        merchant = detect_merchant(subject) or \
+                detect_merchant(body) or \
+                detect_merchant(sender)
+
 
     if not merchant:
         return None

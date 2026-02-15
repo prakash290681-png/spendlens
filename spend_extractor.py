@@ -48,6 +48,9 @@ def extract_spend(email: dict, service):
     full_text = f"{subject} {body} {sender}"
     merchant = detect_merchant(full_text)
 
+    print("MERCHANT DETECTED:", merchant)
+    print("HAS INSTAMART WORD:", "instamart" in full_text.lower())
+
     if not merchant:
         return None
 
@@ -156,6 +159,7 @@ def extract_spend(email: dict, service):
                 "source_id": source_id,
             }
 
+        
         # Bank fallback
         if is_bank_alert:
             amount = extract_amount(subject) or extract_amount(body)

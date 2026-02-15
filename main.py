@@ -250,7 +250,8 @@ def monthly_alerts(request: Request, month: str | None = None):
     alerts = []
 
     MONTHLY_BUDGETS = {
-        "Food Delivery": 2000
+        "Restaurant": 2000,
+        "Grocery": 5000
     }
 
     for category, spent in rows:

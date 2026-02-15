@@ -55,12 +55,16 @@ def extract_spend(email: dict, service):
     date = normalize_date(email.get("Date"))
     source_id = email.get("id")
 
-    # prioritize specific sources first
+    # Detect merchant (body first for specificity)
     merchant = (
-        detect_merchant(subject)
-        or detect_merchant(body)
+        detect_merchant(body)
+        or detect_merchant(subject)
         or detect_merchant(sender)
     )
+
+    print("SUBJECT:", subject)
+    print("DETECTED MERCHANT:", merchant)
+
 
     full_text = f"{subject} {body} {sender}".lower()
     if "instamart" in full_text:

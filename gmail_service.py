@@ -1,6 +1,6 @@
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from calendar import monthrange
 import time
 import base64
@@ -94,25 +94,24 @@ def get_email_content(service, message_id):
         "Body": body,  # body parsing already handled elsewhere in your codebase
     }
 
-
 def fetch_recent_emails(access_token: str, month: str, return_service=False):
     creds = Credentials(token=access_token)
     service = build("gmail", "v1", credentials=creds)
 
     year, mon = map(int, month.split("-"))
 
-    start = f"{year}/{mon:02d}/01"
+    # Start of month
+    start_date = datetime(year, mon, 1)
 
-    # FIRST DAY OF NEXT MONTH
+    # First day of next month
     if mon == 12:
-        end_year = year + 1
-        end_month = 1
+        end_date = datetime(year + 1, 1, 1)
     else:
-        end_year = year
-        end_month = mon + 1
+        end_date = datetime(year, mon + 1, 1)
 
-    end = f"{end_year}/{end_month:02d}/01"
-
+    # Gmail 'after:' is exclusive → subtract 1 day
+    start_for_query = (start_date - timedelta(days=1)).strftime("%Y/%m/%d")
+    end_for_query = end_date.strftime("%Y/%m/%d")
 
     query = (
         '('
@@ -125,33 +124,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
         'from:zomato OR '
         'from:hdfc OR from:icici OR from:axis OR from:sbi'
         ') '
-        f'after:{start} before:{end}'
+        f'after:{start_for_query} before:{end_for_query}'
     )
+
     print("QUERY:", query)
-    
-    emails = []
-    page_token = None
-
-    while True:
-        results = service.users().messages().list(
-            userId="me",
-            q=query,
-            maxResults=100,
-            pageToken=page_token
-        ).execute()
-
-        messages = results.get("messages", [])
-        for msg in messages:
-            email = get_email_content(service, msg["id"])
-            emails.append(email)
-
-        page_token = results.get("nextPageToken")
-        if not page_token:
-            break
-
-    print("EMAIL COUNT:", len(emails))
-
-    if return_service:
-        return emails, service
-
-    return emails

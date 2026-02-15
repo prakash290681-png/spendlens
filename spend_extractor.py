@@ -36,6 +36,12 @@ def extract_spend(email: dict, service):
     clean_body = re.sub(r"\s+", " ", body)
     full_text = f"{subject} {body} {sender}".lower()
 
+    print("======== EMAIL DEBUG ========")
+    print("SUBJECT:", subject)
+    print("BODY SAMPLE:", body[:500])
+    print("SENDER:", sender)
+    print("=============================")
+
     # ---------------- MERCHANT DETECTION ----------------
 
     # SUBJECT FIRST (most reliable)

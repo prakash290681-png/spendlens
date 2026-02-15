@@ -20,15 +20,16 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
     try:
         for email in emails:
             print("FETCHED SUBJECT:", email["Subject"])
-            
+
             spend = extract_spend(email, service)
             if not spend:
                 continue
 
             spend["user_id"] = user_id
 
-            # 🔥 STRONG DUPLICATE CHECK
-            # 1️⃣ absolute protection – same email
+            # =====================================================
+            # 1️⃣ HARD DUPLICATE → SAME GMAIL MESSAGE
+            # =====================================================
             existing = (
                 db.query(Transaction)
                 .filter(
@@ -43,8 +44,10 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
                 continue
 
 
-            # 2️⃣ fallback fuzzy match
-            existing = (
+            # =====================================================
+            # 2️⃣ SOFT DUPLICATE → ONLY WARN, DO NOT BLOCK
+            # =====================================================
+            similar = (
                 db.query(Transaction)
                 .filter(
                     Transaction.user_id == user_id,
@@ -56,10 +59,13 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
                 .first()
             )
 
-            if existing:
-                print("⛔ SKIP fuzzy duplicate:", spend)
-                continue
+            if similar:
+                print("⚠️ Possible duplicate but inserting:", spend)
 
+
+            # =====================================================
+            # INSERT
+            # =====================================================
             db.add(Transaction(**spend))
             db.commit()
             inserted += 1

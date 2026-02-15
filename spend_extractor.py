@@ -1,5 +1,5 @@
 import re
-from utils import detect_category
+from utils import detect_merchant, detect_category
 from date_utils import normalize_date
 
 
@@ -33,20 +33,25 @@ def extract_spend(email: dict, service):
     date = normalize_date(email.get("Date"))
     source_id = email.get("id")
 
+    clean_body = re.sub(r"\s+", " ", body)
     full_text = f"{subject} {body} {sender}".lower()
 
-    # ---------------- MERCHANT DETECTION (STRICT ORDER) ----------------
+    # ---------------- MERCHANT DETECTION ----------------
 
+    # SUBJECT FIRST (most reliable)
+    merchant = detect_merchant(subject)
+
+    if not merchant:
+        merchant = detect_merchant(body)
+
+    if not merchant:
+        merchant = detect_merchant(sender)
+
+    # 🔥 Hard override — Instamart must win
     if "instamart" in full_text:
         merchant = "Swiggy Instamart"
 
-    elif "zomato" in full_text:
-        merchant = "Zomato"
-
-    elif "swiggy" in full_text:
-        merchant = "Swiggy"
-
-    else:
+    if not merchant:
         return None
 
     category = detect_category(merchant)
@@ -54,9 +59,9 @@ def extract_spend(email: dict, service):
     combined_text = (sender + subject).lower()
     is_bank_alert = any(bank in combined_text for bank in ["hdfc", "icici", "axis", "sbi"])
 
-    clean_body = re.sub(r"\s+", " ", body)
-
-    # ---------------- ZOMATO ----------------
+    # ============================================================
+    # ===================== ZOMATO ===============================
+    # ============================================================
 
     if merchant == "Zomato":
 
@@ -81,7 +86,9 @@ def extract_spend(email: dict, service):
         return None
 
 
-    # ---------------- SWIGGY INSTAMART ----------------
+    # ============================================================
+    # ================= SWIGGY INSTAMART =========================
+    # ============================================================
 
     if merchant == "Swiggy Instamart":
 
@@ -106,10 +113,13 @@ def extract_spend(email: dict, service):
         return None
 
 
-    # ---------------- SWIGGY RESTAURANT ----------------
+    # ============================================================
+    # ================= SWIGGY RESTAURANT ========================
+    # ============================================================
 
     if merchant == "Swiggy":
 
+        # Strong label match first
         match = re.search(
             r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|total)"
             r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
@@ -128,16 +138,16 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # 🔥 SMART FALLBACK
+        # Smart fallback (avoid picking item total blindly)
         amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
         values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
 
         if values:
             values.sort(reverse=True)
 
-            # If multiple values, avoid picking the highest blindly
+            # Avoid highest blindly (often item total)
             if len(values) >= 2:
-                amount = values[1]   # usually correct total
+                amount = values[1]
             else:
                 amount = values[0]
 
@@ -162,3 +172,5 @@ def extract_spend(email: dict, service):
                 }
 
         return None
+
+    return None

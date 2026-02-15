@@ -34,7 +34,6 @@ def extract_spend(email: dict, service):
     source_id = email.get("id")
 
     clean_body = re.sub(r"\s+", " ", body)
-    full_text = f"{subject} {body} {sender}".lower()
 
     print("======== EMAIL DEBUG ========")
     print("SUBJECT:", subject)
@@ -42,17 +41,12 @@ def extract_spend(email: dict, service):
     print("SENDER:", sender)
     print("=============================")
 
-    # ---------------- MERCHANT DETECTION ----------------
-
-    # SUBJECT FIRST (most reliable)
-    # 🔥 Hard override — Instamart must win FIRST
-    if "instamart" in full_text:
-        merchant = "Swiggy Instamart"
-    else:
-        merchant = detect_merchant(subject) or \
-                detect_merchant(body) or \
-                detect_merchant(sender)
-
+    # -------------------------------------------------
+    # MERCHANT DETECTION (CRITICAL FIX)
+    # -------------------------------------------------
+    # Evaluate EVERYTHING together so specific terms win
+    full_text = f"{subject} {body} {sender}"
+    merchant = detect_merchant(full_text)
 
     if not merchant:
         return None
@@ -61,6 +55,7 @@ def extract_spend(email: dict, service):
 
     combined_text = (sender + subject).lower()
     is_bank_alert = any(bank in combined_text for bank in ["hdfc", "icici", "axis", "sbi"])
+
 
     # ============================================================
     # ===================== ZOMATO ===============================
@@ -141,14 +136,13 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # Smart fallback (avoid picking item total blindly)
+        # Smart fallback
         amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
         values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
 
         if values:
             values.sort(reverse=True)
 
-            # Avoid highest blindly (often item total)
             if len(values) >= 2:
                 amount = values[1]
             else:

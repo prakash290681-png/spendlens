@@ -1,15 +1,15 @@
-def detect_merchant(text):
-    print("🔥 DETECT MERCHANT CALLED 🔥")
-
+def detect_merchant(text: str):
     if not text:
         return None
 
-    print("TEXT SAMPLE:", text[:120])   # 👈 ADD THIS
-    
-    t = text.lower()
+    t = text.lower().strip()
 
+    # --------------------------------
     # 🥇 MOST SPECIFIC FIRST
-    if "instamart" in t:
+    # --------------------------------
+
+    # Instamart variations
+    if "instamart" in t or "insta mart" in t:
         return "Swiggy Instamart"
 
     if "blinkit" in t:
@@ -17,31 +17,34 @@ def detect_merchant(text):
 
     if "zepto" in t:
         return "Zepto"
-    
-    # 🥈 then general brands
+
+    # --------------------------------
+    # 🥈 General brands
+    # --------------------------------
+
     if "zomato" in t:
         return "Zomato"
 
+    # Important:
+    # Only match plain Swiggy AFTER instamart check
     if "swiggy" in t:
         return "Swiggy"
 
     return None
 
 
-def detect_category(merchant):
+def detect_category(merchant: str):
     if not merchant:
         return "Others"
 
-    m = merchant.lower()
+    m = merchant.lower().strip()
 
-    # groceries
-    if m in ["swiggy instamart", "blinkit", "zepto"]:
+    # Groceries
+    if m in ("swiggy instamart", "blinkit", "zepto"):
         return "Grocery"
 
-    # restaurants
-    if m in ["swiggy", "zomato"]:
+    # Restaurants
+    if m in ("swiggy", "zomato"):
         return "Restaurant"
 
     return "Others"
-
-

@@ -35,6 +35,10 @@ def extract_spend(email: dict, service):
 
     clean_body = re.sub(r"\s+", " ", body)
 
+    print("RAW DATE:", email.get("Date"))
+    print("PARSED DATE:", date)
+    print("PARSED TZ:", date.tzinfo)
+
     print("======== EMAIL DEBUG ========")
     print("SUBJECT:", subject)
     print("BODY SAMPLE:", body[:500])

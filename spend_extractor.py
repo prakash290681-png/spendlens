@@ -93,23 +93,20 @@ def extract_spend(email: dict, service):
 
     if merchant == "Swiggy Instamart":
 
-        match = re.search(
-            r"(order\s*total|amount\s*paid|grand\s*total|total)"
-            r"[^\d₹]{0,80}₹?\s*([\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
-        )
+        # Extract all ₹ values
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
 
-        if match:
-            amount = float(match.group(2).replace(",", ""))
-            if amount >= 100:
-                return {
-                    "merchant": merchant,
-                    "category": category,
-                    "amount": round(amount, 2),
-                    "date": date,
-                    "source_id": source_id,
-                }
+        if values:
+            amount = max(values)
+
+            return {
+                "merchant": merchant,
+                "category": category,
+                "amount": round(amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
 
         return None
 

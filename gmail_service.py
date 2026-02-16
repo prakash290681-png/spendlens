@@ -126,7 +126,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
         f'after:{start} before:{end}'
     )
 
-    print("QUERY:", query)
+    print("🔎 QUERY:", query)
 
     emails = []
     page_token = None
@@ -141,9 +141,12 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
             ).execute()
 
             messages = results.get("messages", [])
+            print("📨 BATCH COUNT:", len(messages))
 
             for msg in messages:
+                print("➡️ FETCHING MSG ID:", msg["id"])
                 email = get_email_content(service, msg["id"])
+                print("   SUBJECT:", email.get("Subject"))
                 emails.append(email)
 
             page_token = results.get("nextPageToken")
@@ -154,10 +157,9 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
         print("❌ GMAIL FETCH ERROR:", e)
         emails = []
 
-    print("EMAIL COUNT:", len(emails))
+    print("✅ TOTAL EMAILS FETCHED:", len(emails))
 
     if return_service:
         return emails, service
 
     return emails
-

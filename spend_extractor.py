@@ -67,7 +67,6 @@ def extract_spend(email: dict, service):
     # ============================================================
     # ===================== ZOMATO ===============================
     # ============================================================
-
     if merchant == "Zomato":
 
         # 1️⃣ Try strong label match first
@@ -102,6 +101,18 @@ def extract_spend(email: dict, service):
                 "date": date,
                 "source_id": source_id,
             }
+
+        # 3️⃣ Bank fallback
+        if is_bank_alert:
+            amount = extract_amount(subject) or extract_amount(body)
+            if amount and amount >= 100:
+                return {
+                    "merchant": merchant,
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
 
         return None
 

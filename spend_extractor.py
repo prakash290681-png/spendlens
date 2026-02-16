@@ -116,6 +116,41 @@ def extract_spend(email: dict, service):
 
 
     # ============================================================
+    # ================= ZEPTO / BLINKIT ==========================
+    # ============================================================
+
+    if merchant in ("Zepto", "Blinkit"):
+
+        # Extract all ₹ values
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 50]
+
+        if values:
+            amount = max(values)
+
+            return {
+                "merchant": merchant,
+                "category": category,
+                "amount": round(amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
+
+        # Bank fallback
+        if is_bank_alert:
+            amount = extract_amount(subject) or extract_amount(body)
+            if amount and amount >= 50:
+                return {
+                    "merchant": merchant,
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
+
+        return None
+
+    # ============================================================
     # ================= SWIGGY RESTAURANT ========================
     # ============================================================
 

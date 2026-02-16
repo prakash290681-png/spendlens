@@ -70,9 +70,10 @@ def extract_spend(email: dict, service):
 
     if merchant == "Zomato":
 
+        # 1️⃣ Try strong label match first
         match = re.search(
-            r"(order\s*total|amount\s*paid|grand\s*total|total)"
-            r"[^\d₹]{0,80}₹?\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(order\s*total|amount\s*paid|grand\s*total|total|total\s*paid)"
+            r".{0,200}?₹?\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
@@ -87,6 +88,20 @@ def extract_spend(email: dict, service):
                     "date": date,
                     "source_id": source_id,
                 }
+
+        # 2️⃣ Fallback – pick largest ₹ value
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
+
+        if values:
+            amount = max(values)
+            return {
+                "merchant": merchant,
+                "category": category,
+                "amount": round(amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
 
         return None
 

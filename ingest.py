@@ -53,16 +53,16 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
                 db.query(Transaction)
                 .filter(
                     Transaction.user_id == user_id,
-                    Transaction.merchant == spend["merchant"],
                     Transaction.amount == spend["amount"],
-                    Transaction.date >= spend["date"] - timedelta(hours=8),
-                    Transaction.date <= spend["date"] + timedelta(hours=8),
+                    Transaction.date >= spend["date"] - timedelta(minutes=60),
+                    Transaction.date <= spend["date"] + timedelta(minutes=60),
+
                 )
                 .first()
             )
 
             if similar:
-                print("⛔ SKIP soft duplicate:", spend)
+                print("⛔ SKIP cross-source duplicate:", spend)
                 continue
 
 

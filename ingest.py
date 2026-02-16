@@ -22,7 +22,9 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
             print("FETCHED SUBJECT:", email["Subject"])
 
             spend = extract_spend(email, service)
+
             if not spend:
+                print("❌ SKIPPED BY EXTRACTOR:", email["Subject"])
                 continue
 
             spend["user_id"] = user_id

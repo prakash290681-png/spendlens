@@ -60,7 +60,9 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
             )
 
             if similar:
-                print("⚠️ Possible duplicate but inserting:", spend)
+                print("⛔ SKIP soft duplicate:", spend)
+                continue
+
 
 
             # =====================================================

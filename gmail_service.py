@@ -113,15 +113,18 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
 
     query = (
         '('
-        'subject:Swiggy OR '
-        'from:swiggy OR '
-        'subject:Instamart OR '
+        # ---- MERCHANT EMAILS ----
+        'from:(swiggy.com OR swiggy.in OR '
         'instamart OR '
-        '"order delivered" OR '
-        '"order placed" OR '
-        'subject:Zomato OR '
-        'from:zomato OR '
-        'from:hdfc OR from:icici OR from:axis OR from:sbi'
+        'zepto.co OR '
+        'blinkit.com OR '
+        'zomato.com) '
+
+        'OR '
+
+        # ---- BANK DEBIT ALERTS ----
+        'from:(hdfc OR icici OR axis OR sbi) '
+        '("debit" OR "spent" OR "transaction" OR "purchase" OR "Rs.")'
         ') '
         f'after:{start} before:{end}'
     )

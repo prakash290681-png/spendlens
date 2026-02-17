@@ -124,7 +124,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
 
         # ---- BANK DEBIT ALERTS ----
         'from:(hdfc OR icici OR axis OR sbi) '
-        '("debit" OR "spent" OR "transaction" OR "purchase" OR "Rs.")'
+        '("debit" OR "spent" OR "debited" OR "UPI txn" OR "card txn")'
         ') '
         f'after:{start} before:{end}'
     )

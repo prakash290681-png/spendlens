@@ -113,18 +113,15 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
 
     query = (
         '('
-        # ---- MERCHANT EMAILS ----
-        'from:(swiggy.com OR swiggy.in OR '
+        'subject:Swiggy OR '
+        'from:swiggy OR '
+        'subject:Instamart OR '
         'instamart OR '
-        'zepto.co OR '
-        'blinkit.com OR '
-        'zomato.com) '
-
-        'OR '
-
-        # ---- BANK DEBIT ALERTS ----
-        'from:(hdfc OR icici OR axis OR sbi) '
-        '("debit" OR "spent" OR "debited" OR "UPI txn" OR "card txn")'
+        '"order delivered" OR '
+        '"order placed" OR '
+        'subject:Zomato OR '
+        'from:zomato OR '
+        'from:hdfc OR from:icici OR from:axis OR from:sbi'
         ') '
         f'after:{start} before:{end}'
     )
@@ -149,8 +146,22 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
             for msg in messages:
                 print("➡️ FETCHING MSG ID:", msg["id"])
                 email = get_email_content(service, msg["id"])
+
+                subject = (email.get("Subject") or "").lower()
+                body = (email.get("Body") or "").lower()
+
+                # 🚫 Skip OTP related emails
+                if "otp" in subject or "one time password" in subject:
+                    print("🚫 SKIPPED OTP (subject):", email.get("Subject"))
+                    continue
+
+                if "otp" in body or "one time password" in body:
+                    print("🚫 SKIPPED OTP (body):", email.get("Subject"))
+                    continue
+
                 print("   SUBJECT:", email.get("Subject"))
                 emails.append(email)
+
 
             page_token = results.get("nextPageToken")
             if not page_token:

@@ -153,6 +153,8 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
                 if "otp" in subject or "one time password" in subject:
                     print("🚫 SKIPPED OTP (subject):", email.get("Subject"))
                     continue
+                print("   SUBJECT:", email.get("Subject"))
+                emails.append(email)
 
             page_token = results.get("nextPageToken")
             if not page_token:

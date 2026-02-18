@@ -23,6 +23,12 @@
 
 <h1>SpendLens</h1>
 
+<div id="score-box" style="margin-bottom:20px; padding:15px; border:1px solid #ddd; border-radius:10px;">
+  <h2>SpendLens Score</h2>
+  <h1 id="score-value">--</h1>
+  <ul id="score-summary"></ul>
+</div>
+
 <div style="margin-bottom: 10px;">
   <label><b>Select Month:</b></label>
   <input type="month" id="monthPicker">
@@ -226,6 +232,27 @@ if ("serviceWorker" in navigator) {
     .catch(err => console.log("SW failed", err));
 }
 </script>
+
+<script>
+async function loadScore() {
+    const response = await fetch('/insights/score');
+    const data = await response.json();
+
+    document.getElementById("score-value").innerText = data.score + "/100";
+
+    const summaryList = document.getElementById("score-summary");
+    summaryList.innerHTML = "";
+
+    data.summary.forEach(msg => {
+        const li = document.createElement("li");
+        li.innerText = msg;
+        summaryList.appendChild(li);
+    });
+}
+
+loadScore();
+</script>
+
 
 </body>
 </html>

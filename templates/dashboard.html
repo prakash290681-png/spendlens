@@ -234,20 +234,64 @@ if ("serviceWorker" in navigator) {
 </script>
 
 <script>
-async function loadScore() {
-    const response = await fetch('/insights/score');
-    const data = await response.json();
 
-    document.getElementById("score-value").innerText = data.score + "/100";
 
-    const summaryList = document.getElementById("score-summary");
-    summaryList.innerHTML = "";
+ async function loadScore() {
+    try {
+        // Get month from URL (same way dashboard summary works)
+        const params = new URLSearchParams(window.location.search);
+        const month = params.get("month");
 
-    data.summary.forEach(msg => {
-        const li = document.createElement("li");
-        li.innerText = msg;
-        summaryList.appendChild(li);
-    });
+        let url = "/insights/score";
+        if (month) {
+            url += `?month=${month}`;
+        }
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            console.error("Score fetch failed:", response.status);
+            return;
+        }
+
+        const data = await response.json();
+
+        const scoreValue = document.getElementById("score-value");
+        const summaryList = document.getElementById("score-summary");
+
+        if (!data || data.score === undefined) {
+            scoreValue.innerText = "--";
+            return;
+        }
+
+        scoreValue.innerText = data.score + "/100";
+
+        // Optional color coding
+        if (data.score >= 80) {
+            scoreValue.style.color = "green";
+        } else if (data.score >= 60) {
+            scoreValue.style.color = "orange";
+        } else {
+            scoreValue.style.color = "red";
+        }
+
+        summaryList.innerHTML = "";
+
+        if (data.summary && data.summary.length > 0) {
+            data.summary.forEach(msg => {
+                const li = document.createElement("li");
+                li.innerText = msg;
+                summaryList.appendChild(li);
+            });
+        } else {
+            const li = document.createElement("li");
+            li.innerText = "No insights available.";
+            summaryList.appendChild(li);
+        }
+
+    } catch (err) {
+        console.error("Error loading score:", err);
+    }
 }
 
 loadScore();

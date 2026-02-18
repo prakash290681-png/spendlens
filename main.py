@@ -471,6 +471,139 @@ def ai_insights(request: Request, month: str | None = None):
     db.close()
 
     return insights
+# -------------------------------------------------
+# SpendLens Score (Behavior Score)
+# -------------------------------------------------
+@app.get("/insights/score")
+def spend_score(request: Request, month: str | None = None):
+    user_id = get_current_user(request)
+
+    start, end = get_month_range(month)
+    prev_month = get_previous_month(month)
+    p_start, p_end = get_month_range(prev_month)
+
+    db = SessionLocal()
+
+    # ---- Current Month Data ----
+    rows = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= start,
+            Transaction.date < end,
+        )
+        .all()
+    )
+
+    if not rows:
+        db.close()
+        return {
+            "score": 0,
+            "message": "No transactions found for this month."
+        }
+
+    total_spent = sum(r.amount for r in rows)
+    order_count = len(rows)
+
+    # ---- Budget Score (40 points) ----
+    MONTHLY_BUDGETS = {
+        "Restaurant": 2000,
+        "Grocery": 5000
+    }
+
+    category_totals = {}
+    for r in rows:
+        category_totals[r.category] = category_totals.get(r.category, 0) + r.amount
+
+    budget_score = 0
+    for category, spent in category_totals.items():
+        limit = MONTHLY_BUDGETS.get(category)
+        if not limit:
+            continue
+
+        if spent <= limit:
+            budget_score += 20  # split across categories
+        else:
+            overshoot_pct = (spent - limit) / limit * 100
+            deduction = min(20, overshoot_pct * 0.2)
+            budget_score += max(0, 20 - deduction)
+
+    # ---- Frequency Score (25 points) ----
+    ideal_orders = 8
+    if order_count <= ideal_orders:
+        frequency_score = 25
+    else:
+        extra_orders = order_count - ideal_orders
+        deduction = min(25, extra_orders * 2)
+        frequency_score = max(0, 25 - deduction)
+
+    # ---- Weekend Score (15 points) ----
+    weekend_spend = sum(
+        r.amount for r in rows if r.date.weekday() >= 5
+    )
+    weekend_ratio = weekend_spend / total_spent if total_spent > 0 else 0
+
+    if weekend_ratio <= 0.5:
+        weekend_score = 15
+    else:
+        weekend_score = max(0, 15 - ((weekend_ratio - 0.5) * 30))
+
+    # ---- Late Night Score (10 points) ----
+    late_night_orders = sum(
+        1 for r in rows if r.date.hour >= 22
+    )
+
+    if late_night_orders == 0:
+        late_night_score = 10
+    else:
+        late_night_score = max(0, 10 - late_night_orders * 2)
+
+    # ---- Month-over-Month Growth (10 points) ----
+    previous_total = (
+        db.query(func.sum(Transaction.amount))
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= p_start,
+            Transaction.date < p_end,
+        )
+        .scalar()
+    ) or 0
+
+    if previous_total == 0:
+        growth_score = 10
+    else:
+        change_pct = ((total_spent - previous_total) / previous_total) * 100
+        if change_pct <= 0:
+            growth_score = 10
+        else:
+            growth_score = max(0, 10 - (change_pct * 0.2))
+
+    db.close()
+
+    total_score = round(
+        budget_score
+        + frequency_score
+        + weekend_score
+        + late_night_score
+        + growth_score
+    )
+
+    return {
+        "score": total_score,
+        "components": {
+            "budget": round(budget_score, 2),
+            "frequency": round(frequency_score, 2),
+            "weekend": round(weekend_score, 2),
+            "late_night": round(late_night_score, 2),
+            "growth": round(growth_score, 2),
+        },
+        "metrics": {
+            "total_spent": round(total_spent, 2),
+            "order_count": order_count,
+            "weekend_ratio": round(weekend_ratio, 2),
+        }
+    }
+
 # ---------------------------
 # TEMPORARY DB RESET ROUTE
 # ---------------------------

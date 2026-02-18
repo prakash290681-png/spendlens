@@ -588,8 +588,23 @@ def spend_score(request: Request, month: str | None = None):
         + growth_score
     )
 
+    summary = []
+
+    if frequency_score < 20:
+        summary.append("Order frequency is slightly high this month.")
+
+    if growth_score == 0:
+        summary.append("Spending increased significantly compared to last month.")
+
+    if budget_score < 35:
+        summary.append("You are close to exceeding your budget.")
+
+    if not summary:
+        summary.append("Great job maintaining spending discipline!")
+
     return {
         "score": total_score,
+        "summary": summary,
         "components": {
             "budget": round(budget_score, 2),
             "frequency": round(frequency_score, 2),

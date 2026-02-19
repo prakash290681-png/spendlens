@@ -138,7 +138,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 
-    // SUMMARY
     const summary = await api(`/summary/monthly?month=${month}`);
     if (requestId !== requestCounter || !summary) return;
 
@@ -147,7 +146,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
     `;
 
-    // CHARTS
+    // 🔁 AUTO RETRY IF DATA NOT READY
+    if (summary.total_spent === 0) {
+      setTimeout(() => {
+        if (requestId === requestCounter) {
+          load(month);
+        }
+      }, 4000);
+    }
+
+    // Charts
     categoryChart = new Chart(document.getElementById("categoryChart"), {
       type: "doughnut",
       data: {
@@ -164,7 +172,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // ALERTS (FULL VERSION RESTORED)
+    // Alerts
     const alertData = await api(`/alerts/monthly?month=${month}`);
     if (requestId !== requestCounter) return;
 
@@ -187,7 +195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             `;
           }).join("");
 
-    // AI INSIGHTS
+    // AI
     try {
       const ai = await api(`/insights/ai?month=${month}`);
       if (requestId !== requestCounter) return;

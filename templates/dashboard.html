@@ -207,6 +207,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (requestId !== requestCounter) return;
     aiDiv.innerHTML = "No insights yet.";
   }
+  
+  // 🔥 Load score in sync with dashboard month
+  await loadScore(month);
 }
 
 
@@ -234,20 +237,12 @@ if ("serviceWorker" in navigator) {
 </script>
 
 <script>
-
-
- async function loadScore() {
+async function loadScore(month) {
     try {
-        // Get month from URL (same way dashboard summary works)
-        const params = new URLSearchParams(window.location.search);
-        const month = params.get("month");
-
-        let url = "/insights/score";
-        if (month) {
-            url += `?month=${month}`;
-        }
-
-        const response = await fetch(url);
+        const response = await fetch(`/insights/score?month=${month}`, {
+            credentials: "same-origin",
+            cache: "no-store"
+        });
 
         if (!response.ok) {
             console.error("Score fetch failed:", response.status);
@@ -261,12 +256,13 @@ if ("serviceWorker" in navigator) {
 
         if (!data || data.score === undefined) {
             scoreValue.innerText = "--";
+            summaryList.innerHTML = "";
             return;
         }
 
         scoreValue.innerText = data.score + "/100";
 
-        // Optional color coding
+        // Color coding
         if (data.score >= 80) {
             scoreValue.style.color = "green";
         } else if (data.score >= 60) {
@@ -277,26 +273,29 @@ if ("serviceWorker" in navigator) {
 
         summaryList.innerHTML = "";
 
+        if (data.rating) {
+            const liTitle = document.createElement("li");
+            liTitle.innerHTML = `<strong>${data.rating.label}</strong>`;
+            summaryList.appendChild(liTitle);
+
+            const liDesc = document.createElement("li");
+            liDesc.innerText = data.rating.description;
+            summaryList.appendChild(liDesc);
+        }
+
         if (data.summary && data.summary.length > 0) {
             data.summary.forEach(msg => {
                 const li = document.createElement("li");
                 li.innerText = msg;
                 summaryList.appendChild(li);
             });
-        } else {
-            const li = document.createElement("li");
-            li.innerText = "No insights available.";
-            summaryList.appendChild(li);
         }
 
     } catch (err) {
         console.error("Error loading score:", err);
     }
 }
-
-loadScore();
 </script>
-
 
 </body>
 </html>

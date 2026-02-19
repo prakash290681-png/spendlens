@@ -602,8 +602,28 @@ def spend_score(request: Request, month: str | None = None):
     if not summary:
         summary.append("Great job maintaining spending discipline!")
 
+    # ---- Score Meaning ----
+    if total_score >= 85:
+        score_label = "Excellent control"
+        score_description = "You're managing your food spending very efficiently this month."
+    elif total_score >= 70:
+        score_label = "Good discipline"
+        score_description = "Spending is mostly under control, with minor areas to improve."
+    elif total_score >= 50:
+        score_label = "Needs attention"
+        score_description = "Spending patterns suggest some overspending or high frequency."
+    else:
+        score_label = "High risk"
+        score_description = "Spending behavior indicates potential budget overrun."
+
+    
     return {
         "score": total_score,
+        "rating": {
+        "label": score_label,
+        "description": score_description
+    },
+
         "summary": summary,
         "components": {
             "budget": round(budget_score, 2),

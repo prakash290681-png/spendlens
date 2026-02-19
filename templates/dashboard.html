@@ -6,27 +6,44 @@
   <style>
     body { font-family: Arial; margin: 40px; }
     .layout { display:flex; gap:20px; align-items:flex-start; }
-    .card { border:1px solid #ddd; padding:16px; margin-top:16px; }
+    .card { border:1px solid #ddd; padding:16px; margin-top:16px; border-radius:10px; }
     .insight-item {
       padding: 8px 0;
       border-bottom: 1px solid #eee;
       line-height: 1.4;
-    }  
-   
+    }
+    #score-value { font-size: 42px; margin: 10px 0; }
+    #score-label { font-weight: bold; margin-bottom: 5px; }
+    #premium-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+    }
+    .premium-locked {
+      color: #888;
+      font-style: italic;
+    }
   </style>
-  <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#111827">
-
 </head>
 
 <body>
 
 <h1>SpendLens</h1>
 
-<div id="score-box" style="margin-bottom:20px; padding:15px; border:1px solid #ddd; border-radius:10px;">
+<!-- SCORE BOX -->
+<div id="score-box" class="card">
   <h2>SpendLens Score</h2>
-  <h1 id="score-value">--</h1>
+  <div id="score-value">--</div>
+  <div id="score-label"></div>
+  <div id="score-description" style="margin-bottom:10px;"></div>
   <ul id="score-summary"></ul>
+</div>
+
+<!-- PREMIUM SECTION -->
+<div id="premium-box" class="card">
+  <h3>🔒 How to Improve Your Score</h3>
+  <div id="improvement-list" class="premium-locked">
+    Upgrade to Premium to unlock personalized improvement suggestions.
+  </div>
 </div>
 
 <div style="margin-bottom: 10px;">
@@ -88,9 +105,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let merchantChart = null;
   let requestCounter = 0;
 
-
-  let activeMonthRequest = null;
-
   function formatLabel(monthStr) {
     const [y, m] = monthStr.split("-");
     const d = new Date(y, m - 1, 1);
@@ -98,120 +112,136 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function resetCharts() {
-    if (categoryChart) {
-      categoryChart.destroy();
-      categoryChart = null;
-    }
-    if (merchantChart) {
-      merchantChart.destroy();
-      merchantChart = null;
-    }
-
-    const catCtx = document.getElementById("categoryChart").getContext("2d");
-    const merCtx = document.getElementById("merchantChart").getContext("2d");
-
-    catCtx.clearRect(0, 0, 1000, 1000);
-    merCtx.clearRect(0, 0, 1000, 1000);
+    if (categoryChart) categoryChart.destroy();
+    if (merchantChart) merchantChart.destroy();
   }
 
   async function load(month) {
+    const requestId = ++requestCounter;
 
-  const requestId = ++requestCounter;
+    summaryDiv.innerHTML = "Loading summary...";
+    alertsDiv.innerHTML = "Loading alerts...";
+    aiDiv.innerHTML = "Generating insights...";
+    resetCharts();
 
-  // Reset UI immediately
-  summaryDiv.innerHTML = "Loading summary...";
-  alertsDiv.innerHTML = "Loading alerts...";
-  aiDiv.innerHTML = "Generating insights...";
-  resetCharts();
+    label.innerText = `Your spending summary (${formatLabel(month)})`;
 
-  label.innerText = `Your spending summary (${formatLabel(month)})`;
+    const summary = await api(`/summary/monthly?month=${month}`);
+    if (requestId !== requestCounter || !summary) return;
 
-  // ---------------- summary ----------------
-  const summary = await api(`/summary/monthly?month=${month}`);
-  if (requestId !== requestCounter) return;
-  if (!summary) return;
-  
-  if (summary.total_spent === 0) {
-    setTimeout(() => {
-      if (requestId === requestCounter) load(month);
-    }, 3000);
+    summaryDiv.innerHTML = `
+      <h3>Total Spend</h3>
+      <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+    `;
+
+    categoryChart = new Chart(
+      document.getElementById("categoryChart"),
+      {
+        type: "doughnut",
+        data: {
+          labels: summary.by_category.map(c => c.category),
+          datasets: [{
+            data: summary.by_category.map(c => c.total)
+          }]
+        }
+      }
+    );
+
+    merchantChart = new Chart(
+      document.getElementById("merchantChart"),
+      {
+        type: "bar",
+        data: {
+          labels: summary.by_merchant.map(m => m.merchant),
+          datasets: [{
+            data: summary.by_merchant.map(m => m.total)
+          }]
+        }
+      }
+    );
+
+    const alertData = await api(`/alerts/monthly?month=${month}`);
+    if (requestId !== requestCounter) return;
+
+    alertsDiv.innerHTML =
+      !alertData || alertData.alerts.length === 0
+        ? "✅ No budget alerts"
+        : alertData.alerts.map(a =>
+          `<div><strong>${a.category}</strong> ₹${a.spent}/${a.limit} (${a.percent}%)</div>`
+        ).join("");
+
+    try {
+      const ai = await api(`/insights/ai?month=${month}`);
+      if (requestId !== requestCounter) return;
+
+      aiDiv.innerHTML =
+        !ai || ai.length === 0
+          ? "No insights yet."
+          : ai.slice(0,3).map(i =>
+              `<div class="insight-item">💡 ${i}</div>`
+            ).join("");
+    } catch {
+      aiDiv.innerHTML = "No insights yet.";
+    }
+
+    await loadScore(month);
   }
 
-  summaryDiv.innerHTML = `
-    <h3>Total Spend</h3>
-    <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
-  `;
+  async function loadScore(month) {
+    try {
+      const response = await fetch(`/insights/score?month=${month}`, {
+        credentials: "same-origin",
+        cache: "no-store"
+      });
 
-  // charts
-  categoryChart = new Chart(
-    document.getElementById("categoryChart"),
-    {
-      type: "doughnut",
-      data: {
-        labels: summary.by_category.map(c => c.category),
-        datasets: [{
-          data: summary.by_category.map(c => c.total)
-        }]
+      const data = await response.json();
+      if (!data || data.score === undefined) return;
+
+      const scoreValue = document.getElementById("score-value");
+      const labelDiv = document.getElementById("score-label");
+      const descDiv = document.getElementById("score-description");
+      const summaryList = document.getElementById("score-summary");
+      const improvementDiv = document.getElementById("improvement-list");
+
+      scoreValue.innerText = data.score + "/100";
+
+      if (data.score >= 80) scoreValue.style.color = "green";
+      else if (data.score >= 60) scoreValue.style.color = "orange";
+      else scoreValue.style.color = "red";
+
+      if (data.rating) {
+        labelDiv.innerText = data.rating.label;
+        descDiv.innerText = data.rating.description;
       }
-    }
-  );
 
-  merchantChart = new Chart(
-    document.getElementById("merchantChart"),
-    {
-      type: "bar",
-      data: {
-        labels: summary.by_merchant.map(m => m.merchant),
-        datasets: [{
-          data: summary.by_merchant.map(m => m.total)
-        }]
+      summaryList.innerHTML = "";
+      if (data.summary) {
+        data.summary.forEach(msg => {
+          const li = document.createElement("li");
+          li.innerText = msg;
+          summaryList.appendChild(li);
+        });
       }
-    }
-  );
 
-  // ---------------- alerts ----------------
-  const alertData = await api(`/alerts/monthly?month=${month}`);
-  if (requestId !== requestCounter) return;
-
-  alertsDiv.innerHTML =
-    !alertData || alertData.alerts.length === 0
-      ? "✅ No budget alerts"
-      : alertData.alerts.map(a => {
-          const percent = Number(a.percent || 0);
-          const over = Number(a.over_by ?? percent - 100);
-
-          return `
-            <div style="margin-bottom:8px;">
-              <strong>${a.category}</strong> ₹${a.spent}/${a.limit} (${percent}%)
-              ${
-                a.status === "exceeded"
-                  ? `<div style="color:#d32f2f;">⚠️ You exceeded the budget by ${over.toFixed(1)}%</div>`
-                  : `<div style="color:#b26a00;">Heads up — nearing limit</div>`
-              }
+      // 🔒 Premium improvements (only if backend sends them)
+      if (data.improvements && data.improvements.length > 0) {
+        improvementDiv.classList.remove("premium-locked");
+        improvementDiv.innerHTML = "";
+        data.improvements.forEach(item => {
+          improvementDiv.innerHTML += `
+            <div style="margin-bottom:10px;">
+              <strong>${item.area}</strong><br>
+              ${item.suggestion}<br>
+              <span style="color:green;">+${item.impact} possible points</span>
             </div>
           `;
-        }).join("");  
-    
+        });
+      }
 
-  // ---------------- AI ----------------
-  try {
-    const ai = await api(`/insights/ai?month=${month}`);
-    if (requestId !== requestCounter) return;
-
-    aiDiv.innerHTML =
-      !ai || ai.length === 0
-        ? "No insights yet."
-        : ai.slice(0,3).map(i => `<div class="insight-item">💡 ${i}</div>`).join("");
-
-  } catch {
-    if (requestId !== requestCounter) return;
-    aiDiv.innerHTML = "No insights yet.";
+    } catch (err) {
+      console.error("Error loading score:", err);
+    }
   }
-  
-  // 🔥 Load score in sync with dashboard month
-  await loadScore(month);
-}
-
 
   const today = new Date();
   const defaultMonth =
@@ -219,7 +249,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     String(today.getMonth() + 1).padStart(2, "0");
 
   picker.value = defaultMonth;
-
   await load(defaultMonth);
 
   picker.addEventListener("change", async (e) => {
@@ -227,74 +256,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
 });
-</script>
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/sw.js")
-    .then(() => console.log("SW registered"))
-    .catch(err => console.log("SW failed", err));
-}
-</script>
-
-<script>
-async function loadScore(month) {
-    try {
-        const response = await fetch(`/insights/score?month=${month}`, {
-            credentials: "same-origin",
-            cache: "no-store"
-        });
-
-        if (!response.ok) {
-            console.error("Score fetch failed:", response.status);
-            return;
-        }
-
-        const data = await response.json();
-
-        const scoreValue = document.getElementById("score-value");
-        const summaryList = document.getElementById("score-summary");
-
-        if (!data || data.score === undefined) {
-            scoreValue.innerText = "--";
-            summaryList.innerHTML = "";
-            return;
-        }
-
-        scoreValue.innerText = data.score + "/100";
-
-        // Color coding
-        if (data.score >= 80) {
-            scoreValue.style.color = "green";
-        } else if (data.score >= 60) {
-            scoreValue.style.color = "orange";
-        } else {
-            scoreValue.style.color = "red";
-        }
-
-        summaryList.innerHTML = "";
-
-        if (data.rating) {
-            const liTitle = document.createElement("li");
-            liTitle.innerHTML = `<strong>${data.rating.label}</strong>`;
-            summaryList.appendChild(liTitle);
-
-            const liDesc = document.createElement("li");
-            liDesc.innerText = data.rating.description;
-            summaryList.appendChild(liDesc);
-        }
-
-        if (data.summary && data.summary.length > 0) {
-            data.summary.forEach(msg => {
-                const li = document.createElement("li");
-                li.innerText = msg;
-                summaryList.appendChild(li);
-            });
-        }
-
-    } catch (err) {
-        console.error("Error loading score:", err);
-    }
-}
 </script>
 
 </body>

@@ -567,15 +567,23 @@ def spend_score(request: Request, month: str | None = None):
 
     change_pct = 0
 
-    if previous_total > 0:
+    # Only apply growth logic if viewing current month
+    today = datetime.utcnow()
+
+    is_current_month = (
+        start.year == today.year and start.month == today.month
+    )
+
+    if previous_total > 0 and is_current_month:
         change_pct = ((total_spent - previous_total) / previous_total) * 100
 
-    if previous_total == 0:
-        growth_score = 10
-    elif change_pct <= 0:
-        growth_score = 10
+        if change_pct <= 0:
+            growth_score = 10
+        else:
+            growth_score = max(0, 10 - (change_pct * 0.2))
     else:
-        growth_score = max(0, 10 - (change_pct * 0.2))
+        # Freeze growth for past months
+        growth_score = 10
 
     db.close()
 
@@ -597,8 +605,15 @@ def spend_score(request: Request, month: str | None = None):
     if change_pct > 20:
         summary.append("Spending increased significantly compared to last month.")
 
-    if budget_score < 35:
-        summary.append("You are close to exceeding your budget.")
+    for category, spent in category_totals.items():
+        limit = MONTHLY_BUDGETS.get(category)
+        if not limit:
+            continue
+
+        if spent > limit:
+            summary.append(f"You exceeded your {category} budget.")
+        elif spent >= limit * 0.8:
+            summary.append(f"You are close to exceeding your {category} budget.")
 
     if not summary:
         summary.append("Great job maintaining spending discipline!")

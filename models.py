@@ -51,3 +51,13 @@ class Transaction(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "source_id", name="uq_user_source"),
     )
+from sqlalchemy import Column, Integer, String, DateTime
+from datetime import datetime
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)
+    event_name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

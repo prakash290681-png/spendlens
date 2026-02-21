@@ -12,7 +12,7 @@ from sqlalchemy import func, text
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from database import engine, SessionLocal
-from models import Base, Transaction
+from models import Base, Transaction, Event
 from auth import router as auth_router
 from admin import router as admin_router
 
@@ -108,22 +108,14 @@ def get_current_user(request: Request) -> int:
 def log_event(user_id: int, event_name: str):
     db = SessionLocal()
     try:
-        query = text("""
-            INSERT INTO events (user_id, event_name, created_at)
-            VALUES (:user_id, :event_name, :created_at)
-        """)
-        db.execute(
-            query,
-            {
-                "user_id": user_id,
-                "event_name": event_name,
-                "created_at": datetime.utcnow()
-            }
+        event = Event(
+            user_id=user_id,
+            event_name=event_name
         )
+        db.add(event)
         db.commit()
     finally:
         db.close()
-        
 # -------------------------------------------------
 # Health
 # -------------------------------------------------

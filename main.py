@@ -500,7 +500,7 @@ def ai_insights(request: Request, month: str | None = None):
 # SpendLens Score (Behavior Score)
 # -------------------------------------------------
 @app.get("/insights/score")
-def spend_score(request: Request, month: str | None = None):
+def spend_score(request: Request, month: str):
     user_id = get_current_user(request)
 
     start, end = get_month_range(month)

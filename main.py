@@ -234,7 +234,7 @@ def monthly_summary(request: Request, month: str | None = None):
         change_percent = round(
             ((total_spent - previous_total) / previous_total) * 100, 1
         )
-
+    
     db.close()
 
     print("DEBUG MONTH:", month)
@@ -709,16 +709,6 @@ def spend_score(request: Request, month: str | None = None):
 # ---------------------------
 # TEMPORARY DB RESET ROUTE
 # ---------------------------
-    print("MONTH RECEIVED:", month)
-    print("START:", start)
-    print("END:", end)
-
-    print("TOTAL:", total_score)
-    print("GROWTH:", growth_score)
-    print("FREQUENCY:", frequency_score)
-    print("BUDGET:", budget_score)
-    print("WEEKEND:", weekend_score)
-    print("LATE NIGHT:", late_night_score)
     return {
         "score": total_score,
         "rating": {
@@ -767,15 +757,51 @@ def delete_tx(source_id: str):
     return {"deleted": source_id}
 
 @app.get("/debug/events")
-def debug_events():
+def debug_events(request: Request):
+    user_id = get_current_user(request)
+
+    # Allow only you (admin user id 1 for now)
+    if user_id != 1:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
     db = SessionLocal()
     rows = db.query(Event).all()
     db.close()
+
     return [
         {
             "user_id": r.user_id,
             "event": r.event_name,
             "time": r.created_at
+        }
+        for r in rows
+    ]
+
+@app.get("/debug/stats")
+def debug_stats(request: Request):
+    user_id = get_current_user(request)
+
+    if user_id != 1:
+        raise HTTPException(status_code=403)
+
+    db = SessionLocal()
+
+    rows = db.execute("""
+        SELECT user_id,
+               COUNT(*) as login_count,
+               MAX(created_at) as last_login
+        FROM events
+        WHERE event_name = 'login'
+        GROUP BY user_id
+    """).fetchall()
+
+    db.close()
+
+    return [
+        {
+            "user_id": r[0],
+            "login_count": r[1],
+            "last_login": r[2]
         }
         for r in rows
     ]

@@ -219,61 +219,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadScore(month);
   }
 
-  async function loadScore(month) {
-    try {
-      const response = await fetch(`/insights/score?month=${month}`, {
-        credentials: "same-origin",
-        cache: "no-store"
-      });
+async function loadScore(month) {
+  try {
+    const data = await api(`/insights/score?month=${month}`);
+    if (!data || data.score === undefined) return;
 
-      const data = await response.json();
-      if (!data || data.score === undefined) return;
+    const scoreValue = document.getElementById("score-value");
+    const labelDiv = document.getElementById("score-label");
+    const descDiv = document.getElementById("score-description");
+    const summaryList = document.getElementById("score-summary");
+    const improvementDiv = document.getElementById("improvement-list");
 
-      const scoreValue = document.getElementById("score-value");
-      const labelDiv = document.getElementById("score-label");
-      const descDiv = document.getElementById("score-description");
-      const summaryList = document.getElementById("score-summary");
-      const improvementDiv = document.getElementById("improvement-list");
+    scoreValue.innerText = data.score + "/100";
 
-      scoreValue.innerText = data.score + "/100";
+    if (data.score >= 80) scoreValue.style.color = "green";
+    else if (data.score >= 60) scoreValue.style.color = "orange";
+    else scoreValue.style.color = "red";
 
-      if (data.score >= 80) scoreValue.style.color = "green";
-      else if (data.score >= 60) scoreValue.style.color = "orange";
-      else scoreValue.style.color = "red";
-
-      if (data.rating) {
-        labelDiv.innerText = data.rating.label;
-        descDiv.innerText = data.rating.description;
-      }
-
-      summaryList.innerHTML = "";
-      if (data.summary) {
-        data.summary.forEach(msg => {
-          const li = document.createElement("li");
-          li.innerText = msg;
-          summaryList.appendChild(li);
-        });
-      }
-
-      if (data.improvements && data.improvements.length > 0) {
-        improvementDiv.classList.remove("premium-locked");
-        improvementDiv.innerHTML = "";
-        data.improvements.forEach(item => {
-          improvementDiv.innerHTML += `
-            <div style="margin-bottom:10px;">
-              <strong>${item.area}</strong><br>
-              ${item.suggestion}<br>
-              <span style="color:green;">+${item.impact} possible points</span>
-            </div>
-          `;
-        });
-      }
-
-    } catch (err) {
-      console.error("Error loading score:", err);
+    if (data.rating) {
+      labelDiv.innerText = data.rating.label;
+      descDiv.innerText = data.rating.description;
     }
-  }
 
+    summaryList.innerHTML = "";
+    if (data.summary) {
+      data.summary.forEach(msg => {
+        const li = document.createElement("li");
+        li.innerText = msg;
+        summaryList.appendChild(li);
+      });
+    }
+
+    if (data.improvements && data.improvements.length > 0) {
+      improvementDiv.classList.remove("premium-locked");
+      improvementDiv.innerHTML = "";
+      data.improvements.forEach(item => {
+        improvementDiv.innerHTML += `
+          <div style="margin-bottom:10px;">
+            <strong>${item.area}</strong><br>
+            ${item.suggestion}<br>
+            <span style="color:green;">+${item.impact} possible points</span>
+          </div>
+        `;
+      });
+    }
+
+  } catch (err) {
+    console.error("Error loading score:", err);
+  }
+}
   const today = new Date();
   const defaultMonth =
     today.getFullYear() + "-" +

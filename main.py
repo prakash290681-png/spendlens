@@ -27,7 +27,7 @@ def get_month_range(month: str | None):
     if month:
         year, mon = map(int, month.split("-"))
     else:
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc)
         year, mon = today.year, today.month
 
     start = datetime(year, mon, 1, tzinfo=timezone.utc)
@@ -43,7 +43,7 @@ def get_previous_month(month_str: str | None):
     if month_str:
         year, mon = map(int, month_str.split("-"))
     else:
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc)
         year, mon = today.year, today.month
 
     if mon == 1:
@@ -516,7 +516,7 @@ def ai_insights(request: Request, month: str | None = None):
 # SpendLens Score (Behavior Score)
 # -------------------------------------------------
 @app.get("/insights/score")
-def spend_score(request: Request, month: str):
+def spend_score(request: Request, month: str | None = None):
     print("score called with month:", month)
     user_id = get_current_user(request)
 
@@ -610,7 +610,7 @@ def spend_score(request: Request, month: str):
     change_pct = 0
 
     # Only apply growth logic if viewing current month
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc)
 
     is_current_month = (
         start.year == today.year and start.month == today.month
@@ -765,3 +765,17 @@ def delete_tx(source_id: str):
     db.commit()
     db.close()
     return {"deleted": source_id}
+
+@app.get("/debug/events")
+def debug_events():
+    db = SessionLocal()
+    rows = db.query(Event).all()
+    db.close()
+    return [
+        {
+            "user_id": r.user_id,
+            "event": r.event_name,
+            "time": r.created_at
+        }
+        for r in rows
+    ]

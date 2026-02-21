@@ -106,9 +106,13 @@ def get_current_user(request: Request) -> int:
 # -------------------------------------------------
 # Health
 # -------------------------------------------------
-@app.get("/")
-def health():
-    return {"status": "ok"}
+@app.get("/", response_class=HTMLResponse)
+def landing(request: Request):
+    return templates.TemplateResponse(
+        "landing.html",
+        {"request": request}
+    )
+
 
 @app.get("/system/ready")
 def system_ready():

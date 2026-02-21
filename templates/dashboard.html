@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (categoryChart) categoryChart.destroy();
     if (merchantChart) merchantChart.destroy();
   }
-
+  
   async function load(month) {
     const requestId = ++requestCounter;
 
@@ -135,6 +135,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     alertsDiv.innerHTML = "Loading alerts...";
     aiDiv.innerHTML = "Generating insights...";
     resetCharts();
+
+    document.getElementById("score-value").innerText = "--";
+    document.getElementById("score-label").innerText = "";
+    document.getElementById("score-description").innerText = "";
+    document.getElementById("score-summary").innerHTML = "";
+    document.getElementById("score-value").innerText = "Calculating...";
 
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 

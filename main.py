@@ -718,7 +718,12 @@ def spend_score(request: Request, month: str | None = None):
                 "suggestion": "Keep spending below last month to gain full growth score.",
                 "impact": round(10 - growth_score)
             })
-
+    print("TOTAL:", total_score)
+    print("GROWTH:", growth_score)
+    print("FREQUENCY:", frequency_score)
+    print("BUDGET:", budget_score)
+    print("WEEKEND:", weekend_score)
+    print("LATE NIGHT:", late_night_score)
     return {
         "score": total_score,
         "rating": {

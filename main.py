@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy import func
+from sqlalchemy import func, text
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from database import engine, SessionLocal
@@ -104,15 +104,16 @@ def get_current_user(request: Request) -> int:
 
 # -------------------------------------------------
 # Event Logger
-# -------------------------------------------------
+# ----------------
 def log_event(user_id: int, event_name: str):
     db = SessionLocal()
     try:
-        db.execute(
-            """
+        query = text("""
             INSERT INTO events (user_id, event_name, created_at)
             VALUES (:user_id, :event_name, :created_at)
-            """,
+        """)
+        db.execute(
+            query,
             {
                 "user_id": user_id,
                 "event_name": event_name,
@@ -122,7 +123,7 @@ def log_event(user_id: int, event_name: str):
         db.commit()
     finally:
         db.close()
-
+        
 # -------------------------------------------------
 # Health
 # -------------------------------------------------

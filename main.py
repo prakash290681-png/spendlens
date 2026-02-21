@@ -612,20 +612,7 @@ def spend_score(request: Request, month: str | None = None):
     # Only apply growth logic if viewing current month
     today = datetime.now(timezone.utc)
 
-    is_current_month = (
-        start.year == today.year and start.month == today.month
-    )
-
-    if previous_total > 0 and is_current_month:
-        change_pct = ((total_spent - previous_total) / previous_total) * 100
-
-        if change_pct <= 0:
-            growth_score = 10
-        else:
-            growth_score = max(0, 10 - (change_pct * 0.2))
-    else:
-        # Freeze growth for past months
-        growth_score = 10
+    growth_score = 10
 
     db.close()
 

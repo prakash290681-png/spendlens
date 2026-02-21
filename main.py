@@ -102,6 +102,26 @@ def get_current_user(request: Request) -> int:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user_id
 
+# -------------------------------------------------
+# Event Logger
+# -------------------------------------------------
+def log_event(user_id: int, event_name: str):
+    db = SessionLocal()
+    try:
+        db.execute(
+            """
+            INSERT INTO events (user_id, event_name, created_at)
+            VALUES (:user_id, :event_name, :created_at)
+            """,
+            {
+                "user_id": user_id,
+                "event_name": event_name,
+                "created_at": datetime.utcnow()
+            }
+        )
+        db.commit()
+    finally:
+        db.close()
 
 # -------------------------------------------------
 # Health
@@ -147,12 +167,15 @@ def system_ready():
 # -------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
-    get_current_user(request)
+    user_id = get_current_user(request)
+
+    # 🔥 Track login
+    log_event(user_id, "login")
+
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request},
     )
-
 
 # -------------------------------------------------
 # Monthly Summary

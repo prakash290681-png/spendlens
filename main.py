@@ -5,11 +5,11 @@ import os
 from datetime import datetime, timezone
 from calendar import monthrange
 from fastapi import FastAPI, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import func
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from database import engine, SessionLocal
 from models import Base, Transaction
@@ -108,10 +108,31 @@ def get_current_user(request: Request) -> int:
 # -------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 def landing(request: Request):
+    user_id = request.session.get("user_id")
+
+    # If already logged in → go to dashboard
+    if user_id:
+        return RedirectResponse(url="/dashboard")
+
     return templates.TemplateResponse(
         "landing.html",
         {"request": request}
     )
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy(request: Request):
+    return templates.TemplateResponse("privacy.html", {"request": request})
+
+
+@app.get("/terms", response_class=HTMLResponse)
+def terms(request: Request):
+    return templates.TemplateResponse("terms.html", {"request": request})
+
+
+@app.get("/google-oauth", response_class=HTMLResponse)
+def google_oauth_info(request: Request):
+    return templates.TemplateResponse("google-oauth.html", {"request": request})
+
 
 
 @app.get("/system/ready")

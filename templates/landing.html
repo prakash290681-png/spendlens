@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>SpendLens – Control Your Food Delivery Spending</title>
+  <title>SpendLens – Smart Food Spend Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
       padding: 0;
       background: #f9fafb;
@@ -19,47 +19,103 @@
       padding: 40px 20px;
     }
 
-    h1 {
-      font-size: 42px;
+    /* HEADER */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      font-weight: 700;
+      font-size: 22px;
+      color: #2563eb;
+    }
+
+    .cta-small {
+      padding: 8px 16px;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 60px 0;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      line-height: 1.2;
       margin-bottom: 20px;
     }
 
-    h2 {
-      margin-top: 50px;
-      margin-bottom: 10px;
-    }
-
-    p {
+    .hero p {
       font-size: 18px;
-      line-height: 1.6;
+      color: #4b5563;
+      max-width: 650px;
+      margin: auto;
     }
 
-    .cta-btn {
+    .cta-primary {
       display: inline-block;
-      margin-top: 20px;
-      padding: 14px 24px;
-      background: #111827;
+      margin-top: 30px;
+      padding: 14px 28px;
+      background: #2563eb;
       color: white;
       text-decoration: none;
       border-radius: 8px;
       font-size: 16px;
+      font-weight: 600;
     }
 
-    .cta-btn:hover {
-      opacity: 0.9;
+    .cta-primary:hover {
+      background: #1d4ed8;
     }
 
-    .feature-box {
+    /* SECTION */
+    .section {
+      margin-top: 70px;
+      padding-top: 50px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    .block {
       background: white;
-      padding: 20px;
+      padding: 18px;
       border-radius: 10px;
-      margin-top: 20px;
       border: 1px solid #e5e7eb;
+      margin-bottom: 15px;
     }
 
-    .footer {
+    /* SCORE PREVIEW */
+    .score-preview {
+      background: #111827;
+      color: white;
+      padding: 40px;
+      border-radius: 16px;
       text-align: center;
-      margin-top: 60px;
+    }
+
+    .score-number {
+      font-size: 48px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    /* FOOTER */
+    .footer {
+      margin-top: 80px;
+      text-align: center;
       font-size: 14px;
       color: #6b7280;
     }
@@ -70,62 +126,117 @@
 
 <div class="container">
 
-  <!-- HERO -->
-  <h1>Control Your Food Delivery Spending Before It Controls You.</h1>
-
-  <p>
-    SpendLens automatically tracks your Swiggy, Zomato, Instamart, Zepto and Blinkit orders from Gmail
-    and gives you a monthly behavior score.
-  </p>
-
-  <a href="/auth/login" class="cta-btn">Sign in with Google</a>
-
-  <!-- PROBLEM -->
-  <h2>Why SpendLens?</h2>
-
-  <p>
-    Food delivery spending is invisible. Small orders add up.
-    Most people don’t realize how much they spend until it’s too late.
-  </p>
-
-  <div class="feature-box">
-    ✔ See your total monthly food spend  
-    ✔ Get budget alerts  
-    ✔ Track Swiggy + Zomato automatically  
-    ✔ View merchant-wise breakdown  
-    ✔ Get a behavioral SpendLens Score  
+  <!-- NAVBAR -->
+  <div class="navbar">
+    <div class="logo">SpendLens</div>
+    <a href="/auth/login" class="cta-small">Sign In</a>
   </div>
 
-  <!-- HOW IT WORKS -->
-  <h2>How It Works</h2>
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Control Your Food Delivery Spending  
+      Before It Controls You.</h1>
 
-  <p>
-    1. Connect your Gmail  
-    2. We detect order confirmation emails  
-    3. We calculate your spend and behavior patterns  
-    4. You get insights and control  
-  </p>
+    <p>
+      Automatically track Swiggy, Zomato, Instamart and more directly from Gmail.
+      Get a monthly spending score and behavioral insights — without manual tracking.
+    </p>
+
+    <a href="/auth/login" class="cta-primary">Start Free with Google</a>
+  </div>
+
+  <!-- WHY -->
+  <div class="section">
+    <h2>Why SpendLens?</h2>
+
+    <div class="block">
+      📊 <strong>Automatic Tracking</strong><br>
+      No manual entry. Orders are detected from confirmation emails.
+    </div>
+
+    <div class="block">
+      🚨 <strong>Budget Alerts</strong><br>
+      Know when Restaurant or Grocery spending exceeds limits.
+    </div>
+
+    <div class="block">
+      🧠 <strong>Behavioral Insights</strong><br>
+      Identify late-night orders, weekend spikes and spending patterns.
+    </div>
+
+    <div class="block">
+      📈 <strong>Merchant Breakdown</strong><br>
+      See exactly where your money goes every month.
+    </div>
+  </div>
+
+  <!-- SCORE DEMO -->
+  <div class="section">
+    <div class="score-preview">
+      <h2>Your Monthly SpendLens Score</h2>
+      <p>A single number from 0–100 that reflects your spending discipline.</p>
+      <div class="score-number" id="demoScore">72</div>
+      <div>Good discipline — minor improvements possible.</div>
+    </div>
+  </div>
+
+  <!-- HOW -->
+  <div class="section">
+    <h2>How It Works</h2>
+
+    <div class="block">
+      1️⃣ <strong>Connect Gmail</strong><br>
+      Secure Google OAuth login.
+    </div>
+
+    <div class="block">
+      2️⃣ <strong>Detect Orders</strong><br>
+      Only order-related emails are processed.
+    </div>
+
+    <div class="block">
+      3️⃣ <strong>Generate Insights</strong><br>
+      Spend totals, alerts, patterns and behavioral score.
+    </div>
+  </div>
 
   <!-- TRUST -->
-  <h2>Your Data Is Safe</h2>
+  <div class="section">
+    <h2>Your Privacy Matters</h2>
+    <p>
+      SpendLens uses secure Google authentication.  
+      We do not store passwords.  
+      We do not sell data.  
+      Only order-related emails are analyzed.
+    </p>
+  </div>
 
-  <p>
-    SpendLens only reads order-related emails.  
-    We do not store passwords.  
-    We do not sell data.  
-    Authentication is handled securely via Google OAuth.
-  </p>
-
-  <!-- CTA AGAIN -->
-  <h2>Start Tracking Today</h2>
-
-  <a href="/auth/login" class="cta-btn">Get Started – It’s Free</a>
+  <!-- FINAL CTA -->
+  <div class="section" style="text-align:center;">
+    <a href="/auth/login" class="cta-primary">Get Started – It’s Free</a>
+  </div>
 
   <div class="footer">
-    © 2026 SpendLens • Built for mindful spending
+    © 2026 SpendLens • Built for mindful spending<br><br>
+    <a href="/privacy">Privacy Policy</a> • 
+    <a href="/terms">Terms of Service</a> • 
+    <a href="/google-oauth">Google Data Usage</a>
   </div>
 
 </div>
+
+<!-- SIMPLE SCORE ANIMATION -->
+<script>
+  const scoreEl = document.getElementById("demoScore");
+  let score = 50;
+  const target = 86;
+
+  const interval = setInterval(() => {
+    score++;
+    scoreEl.innerText = score;
+    if (score >= target) clearInterval(interval);
+  }, 20);
+</script>
 
 </body>
 </html>

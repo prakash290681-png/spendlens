@@ -280,7 +280,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     String(today.getMonth() + 1).padStart(2, "0");
 
   picker.value = defaultMonth;
-  await load(defaultMonth);
+  setTimeout(async () => {
+    await load(defaultMonth);
+  }, 50);
+
 
   picker.addEventListener("change", async (e) => {
     await load(e.target.value);

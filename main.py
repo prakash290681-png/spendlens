@@ -501,6 +501,7 @@ def ai_insights(request: Request, month: str | None = None):
 # -------------------------------------------------
 @app.get("/insights/score")
 def spend_score(request: Request, month: str):
+    print("score called with month:", month)
     user_id = get_current_user(request)
 
     start, end = get_month_range(month)

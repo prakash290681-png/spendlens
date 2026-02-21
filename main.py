@@ -705,6 +705,14 @@ def spend_score(request: Request, month: str | None = None):
                 "suggestion": "Keep spending below last month to gain full growth score.",
                 "impact": round(10 - growth_score)
             })
+    
+# ---------------------------
+# TEMPORARY DB RESET ROUTE
+# ---------------------------
+    print("MONTH RECEIVED:", month)
+    print("START:", start)
+    print("END:", end)
+
     print("TOTAL:", total_score)
     print("GROWTH:", growth_score)
     print("FREQUENCY:", frequency_score)

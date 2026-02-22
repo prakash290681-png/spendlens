@@ -162,7 +162,7 @@ def system_ready():
 # -------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
 
     if not user_id:
         return RedirectResponse(url="/")

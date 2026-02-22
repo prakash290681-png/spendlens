@@ -12,7 +12,7 @@ from sqlalchemy import func, text
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from database import engine, SessionLocal
-from models import Base, Transaction, Event
+from models import Base, Transaction, Event, User
 from auth import router as auth_router
 from admin import router as admin_router
 
@@ -763,19 +763,25 @@ def delete_tx(source_id: str):
 def debug_events(request: Request):
     user_id = get_current_user(request)
 
-    # Allow only you (admin user id 1 for now)
     if user_id != 1:
-        raise HTTPException(status_code=403, detail="Not allowed")
+        raise HTTPException(status_code=403)
 
     db = SessionLocal()
-    rows = db.query(Event).all()
+
+    rows = (
+        db.query(Event, User.email)
+        .join(User, Event.user_id == User.id)
+        .all()
+    )
+
     db.close()
 
     return [
         {
-            "user_id": r.user_id,
-            "event": r.event_name,
-            "time": r.created_at
+            "user_id": r[0].user_id,
+            "email": r[1],
+            "event": r[0].event_name,
+            "time": r[0].created_at
         }
         for r in rows
     ]
@@ -789,22 +795,27 @@ def debug_stats(request: Request):
 
     db = SessionLocal()
 
-    rows = db.execute("""
-        SELECT user_id,
-               COUNT(*) as login_count,
-               MAX(created_at) as last_login
-        FROM events
-        WHERE event_name = 'login'
-        GROUP BY user_id
-    """).fetchall()
+    rows = (
+        db.query(
+            User.id,
+            User.email,
+            func.count(Event.id).label("login_count"),
+            func.max(Event.created_at).label("last_login")
+        )
+        .join(Event, Event.user_id == User.id)
+        .filter(Event.event_name == "login")
+        .group_by(User.id, User.email)
+        .all()
+    )
 
     db.close()
 
     return [
         {
             "user_id": r[0],
-            "login_count": r[1],
-            "last_login": r[2]
+            "email": r[1],
+            "login_count": r[2],
+            "last_login": r[3]
         }
         for r in rows
     ]

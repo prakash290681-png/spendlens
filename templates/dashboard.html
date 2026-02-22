@@ -154,12 +154,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 🔁 AUTO RETRY IF DATA NOT READY
     if (!summary || summary.by_category.length === 0) {
-     setTimeout(() => {
-      if (requestId === requestCounter) {
-        load(month);
-      }
-    }, 2000);
-  }
+      setTimeout(() => {
+        if (requestId === requestCounter) {
+          load(month);
+        }
+      }, 2000);
+    }
 
     // Charts
     categoryChart = new Chart(document.getElementById("categoryChart"), {

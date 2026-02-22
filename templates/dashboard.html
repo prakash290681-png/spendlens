@@ -162,15 +162,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
     }
 
-    // 🔁 AUTO RETRY IF DATA NOT READY
-    if (!summary || summary.by_category.length === 0) {
-      setTimeout(() => {
-        if (requestId === requestCounter) {
-          load(month);
-        }
-      }, 2000);
-    }
+  // 🔁 AUTO RETRY ONLY IF BACKEND SAYS LOADING
+  if (summary && summary.status === "loading") {
+    summaryDiv.innerHTML = "Preparing your dashboard...";
+    setTimeout(() => {
+      if (requestId === requestCounter) {
+        load(month);
+      }
+    }, 2000);
+    return;
+  }
 
+  if (summary.total_spent === 0) {
+    summaryDiv.innerHTML = `
+      <h3>Total Spend</h3>
+      <p style="font-size:24px;"><strong>₹ 0</strong></p>
+      <p style="color:#666;">No transactions yet for this month. Start tracking your spending.</p>
+    `;
+    return;
+  }
     // Charts
     categoryChart = new Chart(document.getElementById("categoryChart"), {
       type: "doughnut",

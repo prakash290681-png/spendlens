@@ -82,6 +82,7 @@ app.add_middleware(
     secret_key=os.getenv("SESSION_SECRET", "spendlens-secret"),
     same_site="lax",
     https_only=False,
+    max_age=60 * 60* 24* 7  # 7 days
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -274,7 +275,9 @@ def monthly_summary(request: Request, month: str | None = None):
 # -------------------------------------------------
 @app.get("/alerts/monthly")
 def monthly_alerts(request: Request, month: str | None = None):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
     start, end = get_month_range(month)
 
     db = SessionLocal()
@@ -325,7 +328,9 @@ def monthly_alerts(request: Request, month: str | None = None):
 # -------------------------------------------------
 @app.get("/debug/transactions")
 def debug_transactions(request: Request, month: str):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
 
     year, mon = map(int, month.split("-"))
     start = datetime(year, mon, 1)
@@ -364,7 +369,10 @@ def debug_transactions(request: Request, month: str):
 # -------------------------------------------------
 @app.get("/insights/recurring")
 def recurring_merchants(request: Request):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
+
 
     db = SessionLocal()
 
@@ -408,7 +416,10 @@ def recurring_merchants(request: Request):
 # -------------------------------------------------
 @app.get("/insights/ai")
 def ai_insights(request: Request, month: str | None = None):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
+
 
     start, end = get_month_range(month)
     prev_month = get_previous_month(month)
@@ -440,7 +451,7 @@ def ai_insights(request: Request, month: str | None = None):
     ) or 0
 
     # ---- month-end prediction ----
-    today = datetime.today()
+    today = datetime.now(timezone.utc)
 
     # only predict if viewing current month
     if start.year == today.year and start.month == today.month:
@@ -523,7 +534,10 @@ def ai_insights(request: Request, month: str | None = None):
 @app.get("/insights/score")
 def spend_score(request: Request, month: str | None = None):
     print("score called with month:", month)
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
+
 
     start, end = get_month_range(month)
     prev_month = get_previous_month(month)
@@ -744,7 +758,9 @@ from models import Transaction
 
 @app.get("/wipe")
 def wipe(request: Request):
-    user_id = get_current_user(request)  # must be logged in
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
 
     db = SessionLocal()
     db.query(Transaction).filter(Transaction.user_id == user_id).delete()
@@ -763,7 +779,10 @@ def delete_tx(source_id: str):
 
 @app.get("/debug/events")
 def debug_events(request: Request):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
+
 
     if user_id != 1:
         raise HTTPException(status_code=403)
@@ -790,7 +809,10 @@ def debug_events(request: Request):
 
 @app.get("/debug/stats")
 def debug_stats(request: Request):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
+
 
     if user_id != 1:
         raise HTTPException(status_code=403)

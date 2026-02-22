@@ -147,10 +147,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     const summary = await api(`/summary/monthly?month=${month}`);
     if (requestId !== requestCounter || !summary) return;
 
-    summaryDiv.innerHTML = `
-      <h3>Total Spend</h3>
-      <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
-    `;
+    if (summary.total_spent === 0) {
+      summaryDiv.innerHTML = `
+        <h3>Total Spend</h3>
+        <p style="font-size:24px;"><strong>₹ 0</strong></p>
+        <div style="margin-top:10px; color:#666;">
+          No transactions yet for ${formatLabel(month)}. Start tracking your spending.
+        </div>
+      `;
+    } else {
+      summaryDiv.innerHTML = `
+        <h3>Total Spend</h3>
+        <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
+      `;
+    }
 
     // 🔁 AUTO RETRY IF DATA NOT READY
     if (!summary || summary.by_category.length === 0) {

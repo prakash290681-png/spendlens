@@ -178,7 +178,9 @@ def dashboard(request: Request):
 # -------------------------------------------------
 @app.get("/summary/monthly")
 def monthly_summary(request: Request, month: str | None = None):
-    user_id = get_current_user(request)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
 
     start, end = get_month_range(month)
 

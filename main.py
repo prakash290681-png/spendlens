@@ -96,10 +96,12 @@ Base.metadata.create_all(bind=engine)
 # -------------------------------------------------
 # Helpers
 # -------------------------------------------------
-def get_current_user(request: Request) -> int:
+from fastapi.responses import RedirectResponse
+
+def get_current_user(request: Request):
     user_id = request.session.get("user_id")
     if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        return None
     return user_id
 
 # -------------------------------------------------
@@ -162,14 +164,15 @@ def system_ready():
 def dashboard(request: Request):
     user_id = get_current_user(request)
 
-    # 🔥 Track login
+    if not user_id:
+        return RedirectResponse(url="/")
+
     log_event(user_id, "login")
 
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request},
     )
-
 # -------------------------------------------------
 # Monthly Summary
 # -------------------------------------------------

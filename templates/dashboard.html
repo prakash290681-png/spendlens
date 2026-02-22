@@ -134,7 +134,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function load(month) {
     retryCount = 0;
     const requestId = ++requestCounter;
-
+    
+    await fetch("/sync", {
+      method: "POST",
+      credentials: "same-origin"
+    });
     summaryDiv.innerHTML = "Loading summary...";
     alertsDiv.innerHTML = "Loading alerts...";
     aiDiv.innerHTML = "Generating insights...";

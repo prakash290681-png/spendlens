@@ -81,8 +81,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET", "spendlens-secret"),
     same_site="lax",
-    https_only=False,
-    max_age=60 * 60* 24* 7  # 7 days
+    https_only=False
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -124,12 +123,6 @@ def log_event(user_id: int, event_name: str):
 # -------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 def landing(request: Request):
-    user_id = request.session.get("user_id")
-
-    # If already logged in → go to dashboard
-    if user_id:
-        return RedirectResponse(url="/dashboard")
-
     return templates.TemplateResponse(
         "landing.html",
         {"request": request}
@@ -801,6 +794,17 @@ def debug_events(request: Request):
         }
         for r in rows
     ]
+
+@app.post("/sync")
+def sync_data(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401)
+
+    # 🔥 Call your existing Gmail ingestion logic here
+    run_gmail_ingestion_for_user(user_id)
+
+    return {"status": "synced"}
 
 @app.get("/debug/stats")
 def debug_stats(request: Request):

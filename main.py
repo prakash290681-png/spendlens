@@ -184,11 +184,21 @@ def monthly_summary(request: Request, month: str | None = None):
         raise HTTPException(status_code=401)
 
     start, end = get_month_range(month)
-
     prev_month = get_previous_month(month)
     p_start, p_end = get_month_range(prev_month)
 
     db = SessionLocal()
+
+    # 🔎 Check if user has ANY transactions at all (ingestion state)
+    has_any_tx = (
+        db.query(Transaction.id)
+        .filter(Transaction.user_id == user_id)
+        .first()
+    )
+
+    if not has_any_tx:
+        db.close()
+        return {"status": "loading"}
 
     # ---- Current month ----
     category_rows = (
@@ -222,7 +232,7 @@ def monthly_summary(request: Request, month: str | None = None):
     total_spent = sum(r.total for r in category_rows)
 
     # ---- Previous month ----
-    prev_total_row = (
+    previous_total = (
         db.query(func.sum(Transaction.amount))
         .filter(
             Transaction.user_id == user_id,
@@ -230,26 +240,15 @@ def monthly_summary(request: Request, month: str | None = None):
             Transaction.date < p_end,
         )
         .scalar()
-    )
+    ) or 0
 
-    previous_total = prev_total_row or 0
-
-    # ---- Change ----
     change_percent = 0
     if previous_total > 0:
         change_percent = round(
             ((total_spent - previous_total) / previous_total) * 100, 1
         )
-    
+
     db.close()
-
-    print("DEBUG MONTH:", month)
-    print("DEBUG RANGE:", start, end)
-    print("DEBUG TOTAL:", total_spent)
-
-    row_users = {user_id}
-    print("AUTH USER:", user_id)
-    print("RETURNING DATA FOR:", row_users)
 
     return {
         "total_spent": round(total_spent, 2),
@@ -268,8 +267,6 @@ def monthly_summary(request: Request, month: str | None = None):
         },
         "budget_alerts": [],
     }
-
-
 # -------------------------------------------------
 # Monthly Alerts
 # -------------------------------------------------
@@ -753,8 +750,6 @@ def spend_score(request: Request, month: str | None = None):
 # ---------------------------
 # TEMPORARY DB RESET ROUTE
 # ---------------------------
-from database import SessionLocal
-from models import Transaction
 
 @app.get("/wipe")
 def wipe(request: Request):

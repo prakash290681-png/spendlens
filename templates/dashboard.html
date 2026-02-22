@@ -116,6 +116,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let categoryChart = null;
   let merchantChart = null;
   let requestCounter = 0;
+  let retryCount = 0;
+  const MAX_RETRIES = 5;
 
   function formatLabel(monthStr) {
     const [y, m] = monthStr.split("-");
@@ -128,7 +130,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (merchantChart) merchantChart.destroy();
   }
   
+
   async function load(month) {
+    retryCount = 0;
     const requestId = ++requestCounter;
 
     summaryDiv.innerHTML = "Loading summary...";
@@ -161,17 +165,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         <p style="font-size:24px;"><strong>₹ ${summary.total_spent}</strong></p>
       `;
     }
+  // 🔁 Retry ONLY if backend says loading
+  if (summary && summary.status === "loading" && retryCount < MAX_RETRIES) {
+    retryCount++;
 
-  // 🔁 AUTO RETRY ONLY IF BACKEND SAYS LOADING
-  if (summary && summary.status === "loading") {
     summaryDiv.innerHTML = "Preparing your dashboard...";
+
     setTimeout(() => {
       if (requestId === requestCounter) {
         load(month);
       }
     }, 2000);
+
     return;
-  }
+}
 
   if (summary.total_spent === 0) {
     summaryDiv.innerHTML = `

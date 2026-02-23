@@ -70,6 +70,8 @@
   </div>
 
 </div>
+let retryAttempts = 0;
+const MAX_RETRIES = 5;
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -124,12 +126,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = await api(`/summary/monthly?month=${month}`);
     if (!summary) return;
 
-    if (summary.status === "loading") {
-      summaryDiv.innerHTML = "Preparing your dashboard...";
-      setTimeout(() => load(month), 2000);
-      return;
+    // If no transactions yet, retry up to 5 times
+    if ((summary.total_spent === 0 || summary.status === "loading") && retryAttempts < MAX_RETRIES) {
+        retryAttempts++;
+        summaryDiv.innerHTML = "Preparing your dashboard...";
+        setTimeout(() => load(month), 1500);
+        return;
     }
 
+    retryAttempts = 0;
+    
     summaryDiv.innerHTML = `
       <h3>Total Spend</h3>
       <p style="font-size:24px;"><strong>₹ ${summary.total_spent || 0}</strong></p>

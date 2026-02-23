@@ -98,6 +98,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let categoryChart = null;
   let merchantChart = null;
 
+  let retryAttempts = 0;
+  const MAX_RETRIES = 5;
+
   function formatLabel(monthStr) {
     const [y, m] = monthStr.split("-");
     const d = new Date(y, m - 1, 1);
@@ -126,12 +129,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = await api(`/summary/monthly?month=${month}`);
     if (!summary) return;
 
-    if (summary.status === "loading") {
+    if (summary.status === "loading" && retryAttempts < MAX_RETRIES) {
+        retryAttempts++;
         summaryDiv.innerHTML = "Preparing your dashboard...";
-        setTimeout(() => load(month), 2000);
+        setTimeout(() => load(month), 1500);
         return;
     }
-    
+
     retryAttempts = 0;
     
     summaryDiv.innerHTML = `
@@ -171,14 +175,24 @@ document.addEventListener("DOMContentLoaded", () => {
     alertsDiv.innerHTML =
       !alertData || alertData.alerts.length === 0
         ? "✅ No budget alerts"
-        : alertData.alerts.map(a => `
-            <div>
-              <strong>${a.category}</strong>
-              ₹${a.spent}/${a.limit} (${a.percent}%)
-            </div>
-          `).join("");
+        : alertData.alerts.map(a => {
+            const percent = Number(a.percent || 0);
+            const over = Number(a.over_by || 0);
 
-    const ai = await api(`/insights/ai?month=${month}`);
+            return `
+              <div style="margin-bottom:8px;">
+                <strong>${a.category}</strong>
+                ₹${a.spent}/${a.limit} (${percent}%)
+                ${
+                  a.status === "exceeded"
+                    ? `<div style="color:#d32f2f;">⚠️ You exceeded the budget by ${over}%</div>`
+                    : `<div style="color:#b26a00;">Heads up — nearing budget limit</div>`
+                }
+              </div>
+            `;
+          }).join("");
+
+        const ai = await api(`/insights/ai?month=${month}`);
     aiDiv.innerHTML =
       !ai || ai.length === 0
         ? "No insights yet."

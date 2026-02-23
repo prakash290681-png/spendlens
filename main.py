@@ -169,7 +169,7 @@ def dashboard(request: Request):
 # Monthly Summary
 # -------------------------------------------------
 @app.get("/summary/monthly")
-def monthly_summary(request: Request, month: str | None = None):
+def monthly_summary(request: Request, month: Optional[str] = None):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401)
@@ -180,84 +180,86 @@ def monthly_summary(request: Request, month: str | None = None):
 
     db = SessionLocal()
 
-    # Check if user has any transactions at all
-    has_any_tx = (
-        db.query(Transaction.id)
-        .filter(Transaction.user_id == user_id)
-        .first()
-    )
+    try:
+        # ---- Check if user has ANY transactions at all ----
+        has_any_tx = (
+            db.query(Transaction.id)
+            .filter(Transaction.user_id == user_id)
+            .first()
+        )
 
-    if not has_any_tx:
+        # If user has zero transactions in DB → still ingesting
+        if not has_any_tx:
+            return {"status": "loading"}
+
+        # ---- Current month aggregation ----
+        category_rows = (
+            db.query(
+                Transaction.category,
+                func.sum(Transaction.amount).label("total")
+            )
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.date >= start,
+                Transaction.date < end,
+            )
+            .group_by(Transaction.category)
+            .all()
+        )
+
+        merchant_rows = (
+            db.query(
+                Transaction.merchant,
+                func.sum(Transaction.amount).label("total")
+            )
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.date >= start,
+                Transaction.date < end,
+            )
+            .group_by(Transaction.merchant)
+            .all()
+        )
+
+        total_spent = sum(r.total for r in category_rows) if category_rows else 0
+
+        # ---- Previous month comparison ----
+        previous_total = (
+            db.query(func.sum(Transaction.amount))
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.date >= p_start,
+                Transaction.date < p_end,
+            )
+            .scalar()
+        ) or 0
+
+        change_percent = 0
+        if previous_total > 0:
+            change_percent = round(
+                ((total_spent - previous_total) / previous_total) * 100, 1
+            )
+
+        return {
+            "total_spent": round(total_spent, 2),
+            "by_category": [
+                {"category": r.category, "total": round(r.total, 2)}
+                for r in category_rows
+            ],
+            "by_merchant": [
+                {"merchant": r.merchant, "total": round(r.total, 2)}
+                for r in merchant_rows
+            ],
+            "comparison": {
+                "previous_total": round(previous_total, 2),
+                "change_percent": change_percent,
+                "trend": "up" if change_percent > 0 else "down" if change_percent < 0 else "same"
+            },
+            "budget_alerts": [],
+        }
+
+    finally:
         db.close()
-        return {"status": "loading"}
-    
-    # ---- Current month aggregation ----
-    category_rows = (
-        db.query(
-            Transaction.category,
-            func.sum(Transaction.amount).label("total")
-        )
-        .filter(
-            Transaction.user_id == user_id,
-            Transaction.date >= start,
-            Transaction.date < end,
-        )
-        .group_by(Transaction.category)
-        .all()
-    )
-
-    merchant_rows = (
-        db.query(
-            Transaction.merchant,
-            func.sum(Transaction.amount).label("total")
-        )
-        .filter(
-            Transaction.user_id == user_id,
-            Transaction.date >= start,
-            Transaction.date < end,
-        )
-        .group_by(Transaction.merchant)
-        .all()
-    )
-
-    total_spent = sum(r.total for r in category_rows)
-
-    # ---- Previous month comparison ----
-    previous_total = (
-        db.query(func.sum(Transaction.amount))
-        .filter(
-            Transaction.user_id == user_id,
-            Transaction.date >= p_start,
-            Transaction.date < p_end,
-        )
-        .scalar()
-    ) or 0
-
-    change_percent = 0
-    if previous_total > 0:
-        change_percent = round(
-            ((total_spent - previous_total) / previous_total) * 100, 1
-        )
-
-    db.close()
-
-    return {
-        "total_spent": round(total_spent, 2),
-        "by_category": [
-            {"category": r.category, "total": round(r.total, 2)}
-            for r in category_rows
-        ],
-        "by_merchant": [
-            {"merchant": r.merchant, "total": round(r.total, 2)}
-            for r in merchant_rows
-        ],
-        "comparison": {
-            "previous_total": round(previous_total, 2),
-            "change_percent": change_percent,
-            "trend": "up" if change_percent > 0 else "down" if change_percent < 0 else "same"
-        },
-        "budget_alerts": [],
-    }
 # -------------------------------------------------
 # Monthly Alerts
 # -------------------------------------------------

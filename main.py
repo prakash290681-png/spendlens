@@ -22,8 +22,9 @@ from admin import router as admin_router
 from datetime import datetime
 from calendar import monthrange
 
+from typing import Optional
 
-def get_month_range(month: str | None):
+def get_month_range(month: Optional[str]):
     if month:
         year, mon = map(int, month.split("-"))
     else:
@@ -38,8 +39,7 @@ def get_month_range(month: str | None):
         end = datetime(year, mon + 1, 1, tzinfo=timezone.utc)
 
     return start, end
-
-def get_previous_month(month_str: str | None):
+def get_previous_month(month_str: Optional[str]):
     if month_str:
         year, mon = map(int, month_str.split("-"))
     else:
@@ -49,8 +49,6 @@ def get_previous_month(month_str: str | None):
     if mon == 1:
         return f"{year-1}-12"
     return f"{year}-{str(mon-1).zfill(2)}"
-
-
 
 # -------------------------------------------------
 # App setup
@@ -823,10 +821,8 @@ def sync_data(request: Request):
     if not user_id:
         raise HTTPException(status_code=401)
 
-    # 🔥 Call your existing Gmail ingestion logic here
-    run_gmail_ingestion_for_user(user_id)
-
-    return {"status": "synced"}
+    # In beta version, sync is handled elsewhere (login / ingestion trigger)
+    return {"status": "ok"}
 
 @app.get("/debug/stats")
 def debug_stats(request: Request):

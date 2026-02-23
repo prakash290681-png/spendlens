@@ -135,10 +135,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     retryCount = 0;
     const requestId = ++requestCounter;
     
-    await fetch("/sync", {
-      method: "POST",
-      credentials: "same-origin"
-    });
+    const today = new Date();
+    const currentMonth =
+      today.getFullYear() + "-" +
+      String(today.getMonth() + 1).padStart(2, "0");
+
+    if (month === currentMonth) {
+      await fetch("/sync", {
+        method: "POST",
+        credentials: "same-origin"
+      });
+    }
     summaryDiv.innerHTML = "Loading summary...";
     alertsDiv.innerHTML = "Loading alerts...";
     aiDiv.innerHTML = "Generating insights...";
@@ -184,15 +191,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
 }
 
-  if (summary.total_spent === 0) {
-    summaryDiv.innerHTML = `
-      <h3>Total Spend</h3>
-      <p style="font-size:24px;"><strong>₹ 0</strong></p>
-      <p style="color:#666;">No transactions yet for this month. Start tracking your spending.</p>
-    `;
-    return;
+  if (!summary || summary.total_spent === 0) {
+    showZeroState();
+  } else {
+    renderCharts();
   }
-    // Charts
+
+  await loadAlerts();
+  await loadAI();
+  await loadScore();
+
+// Charts
     categoryChart = new Chart(document.getElementById("categoryChart"), {
       type: "doughnut",
       data: {

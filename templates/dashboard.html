@@ -96,9 +96,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let categoryChart = null;
   let merchantChart = null;
 
-  let retryAttempts = 0;
-  const MAX_RETRIES = 5;
-
   function formatLabel(monthStr) {
     const [y, m] = monthStr.split("-");
     const d = new Date(y, m - 1, 1);
@@ -125,17 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 
     const summary = await api(`/summary/monthly?month=${month}`);
-    if (!summary) return;
-
-    if (summary.status === "loading" && retryAttempts < MAX_RETRIES) {
-        retryAttempts++;
-        summaryDiv.innerHTML = "Preparing your dashboard...";
-        setTimeout(() => load(month), 1500);
-        return;
-    }
-
-    retryAttempts = 0;
-    
+    if (!summary) return; 
     summaryDiv.innerHTML = `
       <h3>Total Spend</h3>
       <p style="font-size:24px;"><strong>₹ ${summary.total_spent || 0}</strong></p>
@@ -239,8 +226,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Fire sync in background
-  fetch("/sync", { method: "POST", credentials: "same-origin" });
-
   const today = new Date();
   const defaultMonth =
     today.getFullYear() + "-" +

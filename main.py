@@ -181,17 +181,6 @@ def monthly_summary(request: Request, month: Optional[str] = None):
     db = SessionLocal()
 
     try:
-        # ---- Check if user has ANY transactions at all ----
-        has_any_tx = (
-            db.query(Transaction.id)
-            .filter(Transaction.user_id == user_id)
-            .first()
-        )
-
-        # If user has zero transactions in DB → still ingesting
-        if not has_any_tx:
-            return {"status": "loading"}
-
         # ---- Current month aggregation ----
         category_rows = (
             db.query(
@@ -255,7 +244,6 @@ def monthly_summary(request: Request, month: Optional[str] = None):
                 "change_percent": change_percent,
                 "trend": "up" if change_percent > 0 else "down" if change_percent < 0 else "same"
             },
-            "budget_alerts": [],
         }
 
     finally:
@@ -794,15 +782,6 @@ def debug_events(request: Request):
         }
         for r in rows
     ]
-
-@app.post("/sync")
-def sync_data(request: Request):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401)
-
-    # In beta version, sync is handled elsewhere (login / ingestion trigger)
-    return {"status": "ok"}
 
 @app.get("/debug/stats")
 def debug_stats(request: Request):

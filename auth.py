@@ -72,7 +72,7 @@ def login():
 # OAuth Callback
 # -------------------------------------------------
 @router.get("/auth/callback")
-def callback(request: Request, background_tasks: BackgroundTasks):
+def callback(request: Request):
 
     flow = Flow.from_client_config(
         {
@@ -88,27 +88,21 @@ def callback(request: Request, background_tasks: BackgroundTasks):
         redirect_uri=REDIRECT_URI,
     )
 
-    # 1️⃣ Exchange code → tokens
     flow.fetch_token(authorization_response=str(request.url))
     credentials = flow.credentials
 
-    # Save token in session
-    # 🔥 rotate session – prevent cross user leakage
     request.session.clear()
     request.session["access_token"] = credentials.token
 
-    # 2️⃣ Verify identity
     token_info = id_token.verify_oauth2_token(
         credentials.id_token,
         google_requests.Request(),
         GOOGLE_CLIENT_ID,
-        clock_skew_in_seconds=30,
     )
 
     email = token_info["email"]
     name = token_info.get("name")
 
-    # 3️⃣ Upsert user
     db = SessionLocal()
     user = db.query(User).filter(User.email == email).first()
 
@@ -123,23 +117,12 @@ def callback(request: Request, background_tasks: BackgroundTasks):
 
     db.close()
 
-    # 4️⃣ Background ingest for current + previous month
+    # ✅ Synchronous ingestion (no background tasks)
     current_month = datetime.utcnow().strftime("%Y-%m")
     previous_month = get_previous_month(current_month)
 
-    background_tasks.add_task(
-        ingest_gmail_spends,
-        credentials.token,
-        user.id,
-        current_month,
-    )
-
-    background_tasks.add_task(
-        ingest_gmail_spends,
-        credentials.token,
-        user.id,
-        previous_month,
-    )
+    ingest_gmail_spends(credentials.token, user.id, current_month)
+    ingest_gmail_spends(credentials.token, user.id, previous_month)
 
     return RedirectResponse("/dashboard")
 

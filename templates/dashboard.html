@@ -115,7 +115,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let categoryChart = null;
   let merchantChart = null;
-  let requestCounter = 0;
   let retryCount = 0;
   const MAX_RETRIES = 5;
 
@@ -133,7 +132,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function load(month) {
     retryCount = 0;
-    const requestId = ++requestCounter;
+
     
     const today = new Date();
     const currentMonth =
@@ -177,20 +176,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
     }
   // 🔁 Retry ONLY if backend says loading
-  if (summary && summary.status === "loading" && retryCount < MAX_RETRIES) {
-    retryCount++;
-
-    summaryDiv.innerHTML = "Preparing your dashboard...";
-
-    setTimeout(() => {
-      if (requestId === requestCounter) {
-        load(month);
-      }
-    }, 2000);
-
+  if (summary.status === "loading") {
+    setTimeout(() => load(month), 2000);
     return;
-}
-
+  }
+  
   if (!summary || summary.total_spent === 0) {
     showZeroState();
   } else {
@@ -220,7 +210,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Alerts
     const alertData = await api(`/alerts/monthly?month=${month}`);
-    if (requestId !== requestCounter) return;
 
     alertsDiv.innerHTML =
       !alertData || alertData.alerts.length === 0
@@ -244,7 +233,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // AI
     try {
       const ai = await api(`/insights/ai?month=${month}`);
-      if (requestId !== requestCounter) return;
 
       aiDiv.innerHTML =
         !ai || ai.length === 0

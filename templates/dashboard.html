@@ -126,14 +126,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = await api(`/summary/monthly?month=${month}`);
     if (!summary) return;
 
-    // If no transactions yet, retry up to 5 times
-    if ((summary.total_spent === 0 || summary.status === "loading") && retryAttempts < MAX_RETRIES) {
-        retryAttempts++;
+    if (summary.status === "loading") {
         summaryDiv.innerHTML = "Preparing your dashboard...";
-        setTimeout(() => load(month), 1500);
+        setTimeout(() => load(month), 2000);
         return;
     }
-
+    
     retryAttempts = 0;
     
     summaryDiv.innerHTML = `

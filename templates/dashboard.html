@@ -72,6 +72,14 @@
 </div>
 
 <script>
+
+function isFutureMonth(monthStr) {
+  const [y, m] = monthStr.split("-");
+  const selected = new Date(y, m - 1);
+  const today = new Date();
+  return selected > new Date(today.getFullYear(), today.getMonth());
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 
   async function api(url) {
@@ -109,10 +117,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function load(month) {
 
+    resetCharts();
+
+    if (isFutureMonth(month)) {
+      summaryDiv.innerHTML = `
+        <h3>Future Month</h3>
+        <p style="color:#666;">
+          You're viewing a future month. No spending yet — good job staying ahead 😄
+        </p>
+      `;
+      alertsDiv.innerHTML = "";
+      aiDiv.innerHTML = "";
+      document.getElementById("score-value").innerText = "--";
+      return;
+    }
+
     summaryDiv.innerHTML = "Loading summary...";
     alertsDiv.innerHTML = "Loading alerts...";
     aiDiv.innerHTML = "Generating insights...";
-    resetCharts();
 
     document.getElementById("score-value").innerText = "Calculating...";
     document.getElementById("score-label").innerText = "";
@@ -122,39 +144,46 @@ document.addEventListener("DOMContentLoaded", () => {
     label.innerText = `Your spending summary (${formatLabel(month)})`;
 
     const summary = await api(`/summary/monthly?month=${month}`);
-    if (!summary) return; 
+    if (!summary) return;
+
+    if (!summary.by_category || summary.by_category.length === 0) {
+      summaryDiv.innerHTML = `
+        <h3>No spending recorded</h3>
+        <p style="font-size:18px; color:#666;">
+          No transactions found for ${formatLabel(month)}.
+        </p>
+        <div style="margin-top:8px; color:#888;">
+          If this is a past month, data may not have been ingested yet.
+        </div>
+      `;
+      alertsDiv.innerHTML = "";
+      aiDiv.innerHTML = "";
+      document.getElementById("score-value").innerText = "--";
+      return;
+    }
+
     summaryDiv.innerHTML = `
       <h3>Total Spend</h3>
       <p style="font-size:24px;"><strong>₹ ${summary.total_spent || 0}</strong></p>
     `;
 
-    if (summary.total_spent > 0) {
+    categoryChart = new Chart(document.getElementById("categoryChart"), {
+      type: "doughnut",
+      data: {
+        labels: summary.by_category.map(c => c.category),
+        datasets: [{ data: summary.by_category.map(c => c.total) }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
 
-      categoryChart = new Chart(document.getElementById("categoryChart"), {
-        type: "doughnut",
-        data: {
-          labels: summary.by_category.map(c => c.category),
-          datasets: [{ data: summary.by_category.map(c => c.total) }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false
-        }
-      });
-
-      merchantChart = new Chart(document.getElementById("merchantChart"), {
-        type: "bar",
-        data: {
-          labels: summary.by_merchant.map(m => m.merchant),
-          datasets: [{ data: summary.by_merchant.map(m => m.total) }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false
-        }
-      });
-
-    }
+    merchantChart = new Chart(document.getElementById("merchantChart"), {
+      type: "bar",
+      data: {
+        labels: summary.by_merchant.map(m => m.merchant),
+        datasets: [{ data: summary.by_merchant.map(m => m.total) }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
 
     const alertData = await api(`/alerts/monthly?month=${month}`);
     alertsDiv.innerHTML =
@@ -163,21 +192,20 @@ document.addEventListener("DOMContentLoaded", () => {
         : alertData.alerts.map(a => {
             const percent = Number(a.percent || 0);
             const over = Number(a.over_by || 0);
-
             return `
               <div style="margin-bottom:8px;">
                 <strong>${a.category}</strong>
                 ₹${a.spent}/${a.limit} (${percent}%)
                 ${
                   a.status === "exceeded"
-                    ? `<div style="color:#d32f2f;">⚠️ You exceeded the budget by ${over}%</div>`
-                    : `<div style="color:#b26a00;">Heads up — nearing budget limit</div>`
+                    ? `<div style="color:#d32f2f;">⚠️ Exceeded by ${over}%</div>`
+                    : `<div style="color:#b26a00;">Heads up — nearing budget</div>`
                 }
               </div>
             `;
           }).join("");
 
-        const ai = await api(`/insights/ai?month=${month}`);
+    const ai = await api(`/insights/ai?month=${month}`);
     aiDiv.innerHTML =
       !ai || ai.length === 0
         ? "No insights yet."
@@ -198,11 +226,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const summaryList = document.getElementById("score-summary");
     const improvementDiv = document.getElementById("improvement-list");
 
-    scoreValue.innerText = data.score + "/100";
-    scoreValue.style.color =
-      data.score >= 80 ? "green" :
-      data.score >= 60 ? "orange" : "red";
+    if (data.score === null) {
+      scoreValue.innerText = "--";
+      descDiv.innerText = "No data for this month.";
+      return;
+    }
 
+    scoreValue.innerText = data.score + "/100";
     labelDiv.innerText = data.rating?.label || "";
     descDiv.innerText = data.rating?.description || "";
 
@@ -225,7 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Fire sync in background
   const today = new Date();
   const defaultMonth =
     today.getFullYear() + "-" +
@@ -239,7 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 });
-</script>
 
+</script>
 </body>
 </html>

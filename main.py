@@ -537,7 +537,7 @@ def spend_score(request: Request, month: str | None = None):
     if not rows:
         db.close()
         return {
-            "score": 0,
+            "score": None,
             "summary": ["No transactions found for this month."]
         }
 

@@ -182,7 +182,7 @@ def monthly_summary(request: Request, month: str | None = None):
 
     db = SessionLocal()
 
-    # 🔎 Check if user has ANY transactions at all (ingestion state)
+    # ---- Check if user has any transactions at all ----
     has_any_tx = (
         db.query(Transaction.id)
         .filter(Transaction.user_id == user_id)
@@ -193,7 +193,29 @@ def monthly_summary(request: Request, month: str | None = None):
         db.close()
         return {"status": "loading"}
 
-    # ---- Current month ----
+    # ---- Check if THIS month has data yet ----
+    month_has_tx = (
+        db.query(Transaction.id)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.date >= start,
+            Transaction.date < end
+        )
+        .first()
+    )
+
+    # Determine if viewing current month
+    today = datetime.now(timezone.utc)
+    is_current_month = (
+        start.year == today.year and
+        start.month == today.month
+    )
+
+    if not month_has_tx and is_current_month:
+        db.close()
+        return {"status": "loading"}
+
+    # ---- Current month aggregation ----
     category_rows = (
         db.query(
             Transaction.category,
@@ -224,7 +246,7 @@ def monthly_summary(request: Request, month: str | None = None):
 
     total_spent = sum(r.total for r in category_rows)
 
-    # ---- Previous month ----
+    # ---- Previous month comparison ----
     previous_total = (
         db.query(func.sum(Transaction.amount))
         .filter(

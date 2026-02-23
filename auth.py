@@ -5,7 +5,7 @@ import os
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 from fastapi import APIRouter, Request, BackgroundTasks
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -13,6 +13,7 @@ from datetime import datetime
 from database import SessionLocal
 from models import User
 from ingest import ingest_gmail_spends
+
 
 router = APIRouter()
 
@@ -74,59 +75,113 @@ def login():
 @router.get("/auth/callback")
 def callback(request: Request):
 
-    flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [REDIRECT_URI],
+    # 1️⃣ Handle explicit OAuth denial
+    oauth_error = request.query_params.get("error")
+    if oauth_error:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "auth_failed",
+                "reason": "authorization_denied"
             }
-        },
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI,
-    )
+        )
 
-    flow.fetch_token(authorization_response=str(request.url))
-    credentials = flow.credentials
+    try:
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [REDIRECT_URI],
+                }
+            },
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI,
+        )
 
-    request.session.clear()
-    request.session["access_token"] = credentials.token
+        # 2️⃣ Token exchange protection
+        flow.fetch_token(authorization_response=str(request.url))
+        credentials = flow.credentials
 
-    token_info = id_token.verify_oauth2_token(
-        credentials.id_token,
-        google_requests.Request(),
-        GOOGLE_CLIENT_ID,
-    )
+        if not credentials or not credentials.token:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "auth_failed",
+                    "reason": "invalid_credentials"
+                }
+            )
 
-    email = token_info["email"]
-    name = token_info.get("name")
+        request.session.clear()
+        request.session["access_token"] = credentials.token
 
-    db = SessionLocal()
-    user = db.query(User).filter(User.email == email).first()
+        # 3️⃣ ID token verification protection
+        token_info = id_token.verify_oauth2_token(
+            credentials.id_token,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
 
-    if not user:
-        user = User(email=email, name=name)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        email = token_info.get("email")
+        name = token_info.get("name")
 
-    request.session["user_id"] = user.id
-    request.session["user_email"] = user.email
+        if not email:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "auth_failed",
+                    "reason": "email_not_found"
+                }
+            )
 
-    db.close()
+        # 4️⃣ Database protection
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.email == email).first()
 
-    # ✅ Synchronous ingestion (no background tasks)
-    current_month = datetime.utcnow().strftime("%Y-%m")
-    previous_month = get_previous_month(current_month)
+            if not user:
+                user = User(email=email, name=name)
+                db.add(user)
+                db.commit()
+                db.refresh(user)
 
-    ingest_gmail_spends(credentials.token, user.id, current_month)
-    ingest_gmail_spends(credentials.token, user.id, previous_month)
+        except Exception:
+            db.rollback()
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "auth_failed",
+                    "reason": "database_error"
+                }
+            )
 
-    return RedirectResponse("/dashboard")
+        request.session["user_id"] = user.id
+        request.session["user_email"] = user.email
+        db.close()
 
+        # 5️⃣ Ingestion isolation (does NOT block login)
+        current_month = datetime.utcnow().strftime("%Y-%m")
+        previous_month = get_previous_month(current_month)
 
+        try:
+            ingest_gmail_spends(credentials.token, user.id, current_month)
+            ingest_gmail_spends(credentials.token, user.id, previous_month)
+        except Exception:
+            # Log internally if you want, but do not fail login
+            pass
+
+        return RedirectResponse("/dashboard")
+
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "auth_failed",
+                "reason": "unexpected_error"
+            }
+        )
 # -------------------------------------------------
 # Logout
 # -------------------------------------------------

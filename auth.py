@@ -164,10 +164,16 @@ def callback(request: Request):
         # 5️⃣ Ingestion isolation (does NOT block login)
         current_month = datetime.utcnow().strftime("%Y-%m")
         previous_month = get_previous_month(current_month)
+        # added this line to include third month
+        third_month = get_previous_month(previous_month)
+
 
         try:
             ingest_gmail_spends(credentials.token, user.id, current_month)
             ingest_gmail_spends(credentials.token, user.id, previous_month)
+            # added this line to include third month
+            ingest_gmail_spends(credentials.token, user.id, third_month)
+
         except Exception:
             # Log internally if you want, but do not fail login
             pass

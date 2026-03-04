@@ -146,21 +146,33 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = await api(`/summary/monthly?month=${month}`);
     if (!summary) return;
 
-    if (!summary.by_category || summary.by_category.length === 0) {
-      summaryDiv.innerHTML = `
-        <h3>No spending recorded</h3>
-        <p style="font-size:18px; color:#666;">
-          No transactions found for ${formatLabel(month)}.
-        </p>
-        <div style="margin-top:8px; color:#888;">
-          If this is a past month, data may not have been ingested yet.
-        </div>
-      `;
-      alertsDiv.innerHTML = "";
-      aiDiv.innerHTML = "";
-      document.getElementById("score-value").innerText = "--";
-      return;
-    }
+    /* backend status handling */
+
+  if (summary.status === "future") {
+    summaryDiv.innerHTML = `
+      <h3>Future Month</h3>
+      <p style="color:#666;">
+        You're viewing a future month. No spending yet — good job staying ahead 😄
+      </p>
+    `;
+    alertsDiv.innerHTML = "";
+    aiDiv.innerHTML = "";
+    document.getElementById("score-value").innerText = "--";
+    return;
+  }
+
+  if (summary.status === "empty") {
+    summaryDiv.innerHTML = `
+      <h3>No spending recorded</h3>
+      <p style="font-size:18px; color:#666;">
+        No transactions found for ${formatLabel(month)}.
+      </p>
+    `;
+    alertsDiv.innerHTML = "";
+    aiDiv.innerHTML = "";
+    document.getElementById("score-value").innerText = "--";
+    return;
+}
 
     summaryDiv.innerHTML = `
       <h3>Total Spend</h3>

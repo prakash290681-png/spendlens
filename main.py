@@ -175,6 +175,12 @@ def monthly_summary(request: Request, month: Optional[str] = None):
         raise HTTPException(status_code=401)
 
     start, end = get_month_range(month)
+    today = datetime.now(timezone.utc)
+
+    if start.year > today.year or (start.year == today.year and start.month > today.month):
+        db.close()
+        return {"status": "future"}
+
     prev_month = get_previous_month(month)
     p_start, p_end = get_month_range(prev_month)
 
@@ -228,7 +234,11 @@ def monthly_summary(request: Request, month: Optional[str] = None):
             change_percent = round(
                 ((total_spent - previous_total) / previous_total) * 100, 1
             )
-
+        if total_spent == 0:
+            return {
+                "status": "empty"
+            }
+                
         return {
             "total_spent": round(total_spent, 2),
             "by_category": [

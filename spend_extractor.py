@@ -196,7 +196,7 @@ def extract_spend(email: dict, service):
     if merchant == "Swiggy":
 
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)"
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|to\s*pay|total)"
             r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
@@ -215,15 +215,13 @@ def extract_spend(email: dict, service):
                 }
 
         # fallback: scan lines containing ₹
-        amount_lines = re.findall(
-            r"([^\n]{0,80}(?:to\s*pay|total\s*payable|amount\s*paid|grand\s*total|total)[^\n]{0,80}?₹\s*[\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
-        )
+                
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
         
         values = []
 
-        for line in amount_lines:
+        for line in amount:
 
             lower = line.lower()
 

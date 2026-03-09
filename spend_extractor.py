@@ -22,6 +22,22 @@ def extract_amount(text: str):
 
     return None
 
+def extract_by_priority(text: str):
+
+    patterns = [
+        r"to\s*pay.{0,40}?₹\s*([\d,]+(?:\.\d{1,2})?)",
+        r"amount\s*paid.{0,40}?₹\s*([\d,]+(?:\.\d{1,2})?)",
+        r"total\s*payable.{0,40}?₹\s*([\d,]+(?:\.\d{1,2})?)",
+        r"grand\s*total.{0,40}?₹\s*([\d,]+(?:\.\d{1,2})?)",
+        r"order\s*total.{0,40}?₹\s*([\d,]+(?:\.\d{1,2})?)",
+    ]
+
+    for p in patterns:
+        m = re.search(p, text, re.IGNORECASE)
+        if m:
+            return float(m.group(1).replace(",", ""))
+
+    return None
 
 # ---------------- MAIN ----------------
 
@@ -34,7 +50,10 @@ def extract_spend(email: dict, service):
     source_id = email.get("id")
 
     clean_body = re.sub(r"\s+", " ", body)
+    refund_words = ["refund", "refunded", "reversal", "credited"]
 
+    if any(word in clean_body.lower() for word in refund_words):
+        return None
     full_text = f"{subject} {body} {sender}"
     merchant = detect_merchant(full_text)
     if not merchant:
@@ -42,9 +61,11 @@ def extract_spend(email: dict, service):
 
     category = detect_category(merchant)
 
-    combined_text = (sender + subject).lower()
-    is_bank_alert = any(bank in combined_text for bank in ["hdfc", "icici", "axis", "sbi"])
+    bank_keywords = ["hdfc", "icici", "axis", "sbi", "credit card", "debited", "spent"]
 
+    combined_text = (sender + subject).lower()
+
+    is_bank_alert = any(k in combined_text for k in bank_keywords)
 
     # ============================================================
     # ===================== ZOMATO ===============================
@@ -194,6 +215,17 @@ def extract_spend(email: dict, service):
     # ============================================================
 
     if merchant == "Swiggy":
+
+        priority_amount = extract_by_priority(clean_body)
+
+        if priority_amount and priority_amount >= 100:
+            return {
+                "merchant": merchant,
+                "category": category,
+                "amount": round(priority_amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
 
         match = re.search(
             r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)"

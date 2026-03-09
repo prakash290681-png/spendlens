@@ -62,9 +62,6 @@ def extract_attachments(payload):
 # -------------------------------------------------
 # FETCH EMAILS ONLY (NO DB)
 # -------------------------------------------------
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-
 def get_email_content(service, message_id):
     msg = service.users().messages().get(
         userId="me",
@@ -72,26 +69,15 @@ def get_email_content(service, message_id):
         format="full"
     ).execute()
 
-    print("📩 MSG ID:", msg["id"])
-    print("📩 PAYLOAD MIME:", msg["payload"].get("mimeType"))
-    print("📩 HAS PARTS:", "parts" in msg["payload"])
-    print(
-        "📩 PART MIMES:",
-        [p.get("mimeType") for p in msg["payload"].get("parts", [])]
-    )
-
     headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
     body = extract_body(msg["payload"])
-
-    print("🧪 BODY LEN:", len(body))
-    print("🧪 BODY SAMPLE:", body[:200].replace("\n", " "))
 
     return {
         "id": msg["id"],
         "From": headers.get("From", ""),
         "Subject": headers.get("Subject", ""),
         "Date": headers.get("Date", ""),
-        "Body": body,  # body parsing already handled elsewhere in your codebase
+        "Body": body,
     }
 
 def fetch_recent_emails(access_token: str, month: str, return_service=False):
@@ -113,19 +99,20 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
 
     query = (
         '('
-        'subject:Swiggy OR '
         'from:swiggy OR '
-        'subject:Instamart OR '
-        'instamart OR '
-        '"order delivered" OR '
-        '"order placed" OR '
-        'subject:Zomato OR '
         'from:zomato OR '
-        'from:hdfc OR from:icici OR from:axis OR from:sbi'
+        'from:blinkit OR '
+        'from:zepto OR '
+        'from:hdfc OR '
+        'from:icici OR '
+        'from:axis OR '
+        'from:sbi'
+        ') '
+        '('
+        'order OR delivered OR invoice OR receipt OR placed OR paid'
         ') '
         f'after:{start} before:{end}'
     )
-
     print("🔎 QUERY:", query)
 
     emails = []
@@ -136,7 +123,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
             results = service.users().messages().list(
                 userId="me",
                 q=query,
-                maxResults=100,
+                maxResults=50,
                 pageToken=page_token
             ).execute()
 
@@ -150,8 +137,17 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
                 subject = (email.get("Subject") or "").lower()
                 
                 # 🚫 Skip ONLY explicit OTP emails
-                if "otp" in subject or "one time password" in subject:
-                    print("🚫 SKIPPED OTP (subject):", email.get("Subject"))
+                skip_words = [
+                    "otp",
+                    "one time password",
+                    "offer",
+                    "promo",
+                    "sale",
+                    "discount",
+                ]
+
+                if any(word in subject for word in skip_words):
+                    print("🚫 SKIPPED:", email.get("Subject"))
                     continue
                 print("   SUBJECT:", email.get("Subject"))
                 emails.append(email)

@@ -15,6 +15,10 @@ from database import engine, SessionLocal
 from models import Base, Transaction, Event, User
 from auth import router as auth_router
 from admin import router as admin_router
+from fastapi import Depends
+from fastapi.responses import JSONResponse
+import sqlite3
+
 
 # -------------------------------------------------
 # Date Helpers
@@ -398,6 +402,35 @@ def recurring_merchants(request: Request):
 
     db.close()
     return results
+
+
+@app.get("/debug/month/{month}")
+def debug_month(month: str, request: Request):
+
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+
+    conn = sqlite3.connect("spendlens.db")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT id, merchant, amount, date, source_id
+        FROM transactions
+        WHERE user_id = ?
+        AND strftime('%Y-%m', date) = ?
+        ORDER BY date
+        """,
+        (user_id, month),
+    )
+
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+    return rows
+
 
 # -------------------------------------------------
 # AI Insights (rule-based intelligence)

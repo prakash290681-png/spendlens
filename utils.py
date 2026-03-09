@@ -8,25 +8,34 @@ def detect_merchant(text: str):
     # 🥇 MOST SPECIFIC FIRST
     # --------------------------------
 
-    # Instamart variations
-    if "instamart" in t or "insta mart" in t:
+    # Swiggy Instamart
+    if "instamart" in t:
         return "Swiggy Instamart"
 
+    # Blinkit
     if "blinkit" in t:
         return "Blinkit"
 
+    # Zepto
     if "zepto" in t:
         return "Zepto"
 
+    # Amazon Fresh (groceries only)
+    if "amazon fresh" in t or "amazonfresh" in t:
+        return "Amazon Fresh"
+
+    # Flipkart Minutes (groceries)
+    if "flipkart minutes" in t or "flipkartminutes" in t:
+        return "Flipkart Minutes"
+
     # --------------------------------
-    # 🥈 General brands
+    # 🥈 Restaurants
     # --------------------------------
 
     if "zomato" in t:
         return "Zomato"
 
-    # Important:
-    # Only match plain Swiggy AFTER instamart check
+    # IMPORTANT: must stay after instamart check
     if "swiggy" in t:
         return "Swiggy"
 
@@ -40,7 +49,7 @@ def detect_category(merchant: str):
     m = merchant.lower().strip()
 
     # Groceries
-    if m in ("swiggy instamart", "blinkit", "zepto"):
+    if m in ("swiggy instamart", "blinkit", "zepto", "amazon fresh", "bigbasket", "grofers", "flipmart minutes"):
         return "Grocery"
 
     # Restaurants

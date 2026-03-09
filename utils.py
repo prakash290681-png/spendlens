@@ -2,7 +2,8 @@ def detect_merchant(text: str):
     if not text:
         return None
 
-    t = text.lower().strip()
+    t = text.lower()
+    t = " ".join(t.split())
 
     # --------------------------------
     # 🥇 MOST SPECIFIC FIRST
@@ -49,7 +50,7 @@ def detect_category(merchant: str):
     m = merchant.lower().strip()
 
     # Groceries
-    if m in ("swiggy instamart", "blinkit", "zepto", "amazon fresh", "bigbasket", "grofers", "flipmart minutes"):
+    if m in ("swiggy instamart", "blinkit", "zepto", "amazon fresh", "bigbasket", "grofers", "flipkart minutes"):
         return "Grocery"
 
     # Restaurants

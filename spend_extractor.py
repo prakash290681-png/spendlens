@@ -35,7 +35,7 @@ def extract_spend(email: dict, service):
 
     clean_body = re.sub(r"\s+", " ", body)
 
-    full_text = f"{subject} {body} {sender}"
+    full_text = f"{subject} {sender} {body}"
     merchant = detect_merchant(full_text)
     if not merchant:
         return None

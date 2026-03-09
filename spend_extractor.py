@@ -196,7 +196,7 @@ def extract_spend(email: dict, service):
     if merchant == "Swiggy":
 
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|total)"
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)"
             r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
@@ -216,7 +216,7 @@ def extract_spend(email: dict, service):
 
         # fallback: scan lines containing ₹
         amount_lines = re.findall(
-            r"([^\n]{0,50}₹\s*[\d,]+(?:\.\d{1,2})?)",
+            r"([^\n]{0,60}₹\s*[\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
@@ -224,10 +224,11 @@ def extract_spend(email: dict, service):
         values = []
 
         for line in amount_lines:
+
             lower = line.lower()
 
-            # Ignore non-payment rows
-            if "item total" in lower:
+            # ignore non-payment rows
+            if "item" in lower and "total" in lower:
                 continue
             if "subtotal" in lower:
                 continue
@@ -237,22 +238,23 @@ def extract_spend(email: dict, service):
                 continue
             if "coupon" in lower:
                 continue
-            
+
             m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
 
-            if m:
-                val = float(m.group(1).replace(",", ""))
+            if not m:
+                continue
 
-                # ignore negative values
-                if val <= 0:
-                    continue
+            val = float(m.group(1).replace(",", ""))
 
-                # ignore small fees like GST / platform fee
-                if val >= 100:
-                    values.append(val)
+            if val <= 0:
+                continue
 
-            if values:
-                amount = min(values)
+            if val >= 100:
+                values.append(val)
+
+        if values:
+
+            amount = min(values)
 
             return {
                 "merchant": merchant,
@@ -264,6 +266,7 @@ def extract_spend(email: dict, service):
 
         # bank alert fallback
         if is_bank_alert:
+
             amount = extract_amount(subject) or extract_amount(body)
 
             if amount and amount >= 100:

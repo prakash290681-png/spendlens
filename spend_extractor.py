@@ -141,7 +141,7 @@ def extract_spend(email: dict, service):
         values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 50]
 
         if values:
-            amount = min(values)
+            amount = max(values)
 
             return {
                 "merchant": merchant,
@@ -216,27 +216,28 @@ def extract_spend(email: dict, service):
 
         # fallback: scan lines containing ₹
         amount_lines = re.findall(
-            r"([^\n]{0,60}₹\s*[\d,]+(?:\.\d{1,2})?)",
+            r"([^\n]{0,80}(?:to\s*pay|total\s*payable|amount\s*paid|grand\s*total|total)[^\n]{0,80}?₹\s*[\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
-
+        
         values = []
 
         for line in amount_lines:
 
             lower = line.lower()
 
-            # ignore non-payment rows
-            if "item" in lower and "total" in lower:
-                continue
-            if "subtotal" in lower:
-                continue
-            if "discount" in lower:
-                continue
-            if "promo" in lower:
-                continue
-            if "coupon" in lower:
+            ignore_words = [
+                "discount",
+                "promo",
+                "coupon",
+                "savings",
+                "item total",
+                "delivery fee",
+                "tax",
+            ]
+
+            if any(word in lower for word in ignore_words):
                 continue
 
             m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
@@ -254,7 +255,7 @@ def extract_spend(email: dict, service):
 
         if values:
 
-            amount = min(values)
+            amount = max(values)
 
             return {
                 "merchant": merchant,

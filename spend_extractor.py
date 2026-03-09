@@ -226,21 +226,33 @@ def extract_spend(email: dict, service):
         for line in amount_lines:
             lower = line.lower()
 
+            # Ignore non-payment rows
             if "item total" in lower:
                 continue
             if "subtotal" in lower:
                 continue
-
+            if "discount" in lower:
+                continue
+            if "promo" in lower:
+                continue
+            if "coupon" in lower:
+                continue
+            
             m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
 
             if m:
                 val = float(m.group(1).replace(",", ""))
 
+                # ignore negative values
+                if val <= 0:
+                    continue
+
+                # ignore small fees like GST / platform fee
                 if val >= 100:
                     values.append(val)
 
-        if values:
-            amount = min(values)
+            if values:
+                amount = min(values)
 
             return {
                 "merchant": merchant,

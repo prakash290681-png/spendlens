@@ -173,64 +173,76 @@ def extract_spend(email: dict, service):
 # ================= SWIGGY RESTAURANT ========================
 # ============================================================
 
+# ============================================================
+# ================= SWIGGY RESTAURANT ========================
+# ============================================================
+
     if merchant == "Swiggy":
 
-        # Step 1: Order Total (most reliable)
-        match = re.search(
-            r"order\s*total[^\d₹]{0,40}₹\s*([\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
-        )
+        body_lower = clean_body.lower()
 
-        if match:
-            amount = float(match.group(1).replace(",", ""))
+        # Step 1: Look for "order total"
+        idx = body_lower.find("order total")
 
-            if amount >= 100:
-                return {
-                    "merchant": merchant,
-                    "category": category,
-                    "amount": round(amount, 2),
-                    "date": date,
-                    "source_id": source_id,
-                }
+        if idx != -1:
 
-        # Step 2: Grand Total
-        match = re.search(
-            r"grand\s*total[^\d₹]{0,40}₹\s*([\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
-        )
+            snippet = clean_body[idx:idx+120]
 
-        if match:
-            amount = float(match.group(1).replace(",", ""))
+            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", snippet)
 
-            if amount >= 100:
-                return {
-                    "merchant": merchant,
-                    "category": category,
-                    "amount": round(amount, 2),
-                    "date": date,
-                    "source_id": source_id,
-                }
+            if m:
+                amount = float(m.group(1).replace(",", ""))
 
-        # Step 3: Paid Via Bank
-        match = re.search(
-            r"paid\s*via\s*bank[^\d₹]{0,40}₹\s*([\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
-        )
+                if amount >= 100:
+                    return {
+                        "merchant": merchant,
+                        "category": category,
+                        "amount": round(amount, 2),
+                        "date": date,
+                        "source_id": source_id,
+                    }
 
-        if match:
-            amount = float(match.group(1).replace(",", ""))
+        # Step 2: Look for "grand total"
+        idx = body_lower.find("grand total")
 
-            if amount >= 100:
-                return {
-                    "merchant": merchant,
-                    "category": category,
-                    "amount": round(amount, 2),
-                    "date": date,
-                    "source_id": source_id,
-                }
+        if idx != -1:
+
+            snippet = clean_body[idx:idx+120]
+
+            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", snippet)
+
+            if m:
+                amount = float(m.group(1).replace(",", ""))
+
+                if amount >= 100:
+                    return {
+                        "merchant": merchant,
+                        "category": category,
+                        "amount": round(amount, 2),
+                        "date": date,
+                        "source_id": source_id,
+                    }
+
+        # Step 3: Paid via bank
+        idx = body_lower.find("paid via bank")
+
+        if idx != -1:
+
+            snippet = clean_body[idx:idx+120]
+
+            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", snippet)
+
+            if m:
+                amount = float(m.group(1).replace(",", ""))
+
+                if amount >= 100:
+                    return {
+                        "merchant": merchant,
+                        "category": category,
+                        "amount": round(amount, 2),
+                        "date": date,
+                        "source_id": source_id,
+                    }
 
         # Step 4: Bank alert fallback
         if is_bank_alert:

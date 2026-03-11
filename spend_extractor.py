@@ -172,38 +172,37 @@ def extract_spend(email: dict, service):
 # ============================================================
 # ================= SWIGGY RESTAURANT ========================
 # ============================================================
-# ============================================================
-# ================= SWIGGY RESTAURANT ========================
-# ============================================================
-
     if merchant == "Swiggy":
 
-        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        match = re.search(
+            r"(order\s*total|grand\s*total)[^₹]{0,200}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body,
+            re.IGNORECASE
+        )
 
-        values = []
+        if match:
+            amount = float(match.group(2).replace(",", ""))
 
-        for a in amounts:
+            if amount >= 100:
+                return {
+                    "merchant": merchant,
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
 
-            val = float(a.replace(",", ""))
+        # fallback: Paid Via Bank
+        match = re.search(
+            r"paid\s*via\s*bank[^₹]{0,200}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body,
+            re.IGNORECASE
+        )
 
-            # ignore small charges
-            if val < 100:
-                continue
+        if match:
+            amount = float(match.group(1).replace(",", ""))
 
-            values.append(val)
-
-        if values:
-
-            # Swiggy receipts list item total first
-            item_total = max(values)
-
-            # final payable is next largest number
-            possible = [v for v in values if v <= item_total]
-
-            if possible:
-
-                amount = sorted(possible)[-1]
-
+            if amount >= 100:
                 return {
                     "merchant": merchant,
                     "category": category,

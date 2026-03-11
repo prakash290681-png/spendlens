@@ -173,22 +173,17 @@ def extract_spend(email: dict, service):
 # ================= SWIGGY RESTAURANT ========================
 # ============================================================
 
-    # ============================================================
-# ================= SWIGGY RESTAURANT ========================
-# ============================================================
-
     if merchant == "Swiggy":
 
-        # Step 1: Look for strong payment indicators
+        # Step 1: Order Total (most reliable)
         match = re.search(
-            r"(to\s*pay|total\s*payable|grand\s*total|amount\s*paid)"
-            r"[^\d₹]{0,80}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            r"order\s*total[^\d₹]{0,40}₹\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
 
         if match:
-            amount = float(match.group(2).replace(",", ""))
+            amount = float(match.group(1).replace(",", ""))
 
             if amount >= 100:
                 return {
@@ -199,50 +194,47 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # Step 2: fallback scan but ignore misleading rows
-        lines = re.findall(r"[^\n]{0,80}₹\s*[\d,]+(?:\.\d{1,2})?", clean_body)
+        # Step 2: Grand Total
+        match = re.search(
+            r"grand\s*total[^\d₹]{0,40}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body,
+            re.IGNORECASE
+        )
 
-        values = []
+        if match:
+            amount = float(match.group(1).replace(",", ""))
 
-        for line in lines:
+            if amount >= 100:
+                return {
+                    "merchant": merchant,
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
 
-            lower = line.lower()
+        # Step 3: Paid Via Bank
+        match = re.search(
+            r"paid\s*via\s*bank[^\d₹]{0,40}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body,
+            re.IGNORECASE
+        )
 
-            if any(word in lower for word in [
-                "item total",
-                "tax",
-                "delivery fee",
-                "platform fee",
-                "packing charge",
-                "discount",
-                "promo",
-                "coupon"
-            ]):
-                continue
+        if match:
+            amount = float(match.group(1).replace(",", ""))
 
-            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
+            if amount >= 100:
+                return {
+                    "merchant": merchant,
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
 
-            if not m:
-                continue
-
-            val = float(m.group(1).replace(",", ""))
-
-            if val >= 100:
-                values.append(val)
-
-        if values:
-            amount = max(values)
-
-            return {
-                "merchant": merchant,
-                "category": category,
-                "amount": round(amount, 2),
-                "date": date,
-                "source_id": source_id,
-            }
-
-        # Step 3: bank alert fallback
+        # Step 4: Bank alert fallback
         if is_bank_alert:
+
             amount = extract_amount(subject) or extract_amount(body)
 
             if amount and amount >= 100:

@@ -173,27 +173,65 @@ def extract_spend(email: dict, service):
 # ================= SWIGGY RESTAURANT ========================
 # ============================================================
 
+    # ============================================================
+# ================= SWIGGY RESTAURANT ========================
+# ============================================================
+
     if merchant == "Swiggy":
 
-        # 1️⃣ Extract all ₹ amounts from email
-        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
+        # Step 1: Look for strong payment indicators
+        match = re.search(
+            r"(to\s*pay|total\s*payable|grand\s*total|amount\s*paid)"
+            r"[^\d₹]{0,80}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body,
+            re.IGNORECASE
+        )
+
+        if match:
+            amount = float(match.group(2).replace(",", ""))
+
+            if amount >= 100:
+                return {
+                    "merchant": merchant,
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
+
+        # Step 2: fallback scan but ignore misleading rows
+        lines = re.findall(r"[^\n]{0,80}₹\s*[\d,]+(?:\.\d{1,2})?", clean_body)
 
         values = []
 
-        for a in amounts:
-            val = float(a.replace(",", ""))
+        for line in lines:
 
-            # ignore very small values like delivery fee
-            if val < 100:
+            lower = line.lower()
+
+            if any(word in lower for word in [
+                "item total",
+                "tax",
+                "delivery fee",
+                "platform fee",
+                "packing charge",
+                "discount",
+                "promo",
+                "coupon"
+            ]):
                 continue
 
-            values.append(val)
+            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
+
+            if not m:
+                continue
+
+            val = float(m.group(1).replace(",", ""))
+
+            if val >= 100:
+                values.append(val)
 
         if values:
-
-            # Swiggy usually lists item total first and payable later
-            # final payable is usually the smaller of the big numbers
-            amount = min(values)
+            amount = max(values)
 
             return {
                 "merchant": merchant,
@@ -203,9 +241,8 @@ def extract_spend(email: dict, service):
                 "source_id": source_id,
             }
 
-        # fallback for bank alerts
+        # Step 3: bank alert fallback
         if is_bank_alert:
-
             amount = extract_amount(subject) or extract_amount(body)
 
             if amount and amount >= 100:

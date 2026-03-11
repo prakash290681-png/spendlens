@@ -194,11 +194,10 @@ def extract_spend(email: dict, service):
     # ============================================================
     # ============================================================
 
-
     if merchant == "Swiggy":
 
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)"
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|to\s*pay)"
             r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
@@ -216,8 +215,41 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
-        values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
+        amount_lines = re.findall(
+            r"([^\n]{0,80}₹\s*[\d,]+(?:\.\d{1,2})?)",
+            clean_body,
+            re.IGNORECASE
+        )
+
+        values = []
+
+        for line in amount_lines:
+
+            lower = line.lower()
+
+            # ignore non-payment rows
+            if "item total" in lower:
+                continue
+            if "discount" in lower:
+                continue
+            if "promo" in lower:
+                continue
+            if "coupon" in lower:
+                continue
+            if "delivery fee" in lower:
+                continue
+            if "tax" in lower:
+                continue
+
+            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
+
+            if not m:
+                continue
+
+            val = float(m.group(1).replace(",", ""))
+
+            if val >= 100:
+                values.append(val)
 
         if values:
             amount = max(values)

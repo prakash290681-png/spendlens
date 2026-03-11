@@ -192,11 +192,13 @@ def extract_spend(email: dict, service):
     # ============================================================
     # ================= SWIGGY RESTAURANT ========================
     # ============================================================
+    # ============================================================
+
 
     if merchant == "Swiggy":
 
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|to\s*pay|total)"
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable)"
             r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
@@ -214,45 +216,10 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # fallback: scan lines containing ₹
-                
         amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
         values = [float(a.replace(",", "")) for a in amounts if float(a.replace(",", "")) >= 100]
-        
-        values = []
-
-        for line in amount:
-
-            lower = line.lower()
-
-            ignore_words = [
-                "discount",
-                "promo",
-                "coupon",
-                "savings",
-                "item total",
-                "delivery fee",
-                "tax",
-            ]
-
-            if any(word in lower for word in ignore_words):
-                continue
-
-            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
-
-            if not m:
-                continue
-
-            val = float(m.group(1).replace(",", ""))
-
-            if val <= 0:
-                continue
-
-            if val >= 100:
-                values.append(val)
 
         if values:
-
             amount = max(values)
 
             return {
@@ -263,9 +230,7 @@ def extract_spend(email: dict, service):
                 "source_id": source_id,
             }
 
-        # bank alert fallback
         if is_bank_alert:
-
             amount = extract_amount(subject) or extract_amount(body)
 
             if amount and amount >= 100:

@@ -99,22 +99,19 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
 
     query = (
         '('
-        'subject:Swiggy OR '
         'from:swiggy OR '
-        'subject:Instamart OR '
-        'instamart OR '
-        '"order delivered" OR '
-        '"order placed" OR '
-        'subject:Zomato OR '
         'from:zomato OR '
         'from:blinkit OR '
         'from:zepto OR '
-        'from:hdfc OR from:icici OR from:axis OR from:sbi'
+        'from:hdfc OR '
+        'from:icici OR '
+        'from:axis OR '
+        'from:sbi'
         ') '
         f'after:{start} before:{end}'
     )
-    print("🔎 QUERY:", query)
 
+    print("🔎 QUERY:", query)
     emails = []
     page_token = None
 

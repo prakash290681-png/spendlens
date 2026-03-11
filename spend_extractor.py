@@ -172,79 +172,47 @@ def extract_spend(email: dict, service):
 # ============================================================
 # ================= SWIGGY RESTAURANT ========================
 # ============================================================
-
 # ============================================================
 # ================= SWIGGY RESTAURANT ========================
 # ============================================================
 
     if merchant == "Swiggy":
 
-        body_lower = clean_body.lower()
+        amounts = re.findall(r"₹\s*([\d,]+(?:\.\d{1,2})?)", clean_body)
 
-        # Step 1: Look for "order total"
-        idx = body_lower.find("order total")
+        values = []
 
-        if idx != -1:
+        for a in amounts:
 
-            snippet = clean_body[idx:idx+120]
+            val = float(a.replace(",", ""))
 
-            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", snippet)
+            # ignore small charges
+            if val < 100:
+                continue
 
-            if m:
-                amount = float(m.group(1).replace(",", ""))
+            values.append(val)
 
-                if amount >= 100:
-                    return {
-                        "merchant": merchant,
-                        "category": category,
-                        "amount": round(amount, 2),
-                        "date": date,
-                        "source_id": source_id,
-                    }
+        if values:
 
-        # Step 2: Look for "grand total"
-        idx = body_lower.find("grand total")
+            # Swiggy receipts list item total first
+            item_total = max(values)
 
-        if idx != -1:
+            # final payable is next largest number
+            possible = [v for v in values if v <= item_total]
 
-            snippet = clean_body[idx:idx+120]
+            if possible:
 
-            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", snippet)
+                amount = sorted(possible)[-1]
 
-            if m:
-                amount = float(m.group(1).replace(",", ""))
+                return {
+                    "merchant": merchant,
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "date": date,
+                    "source_id": source_id,
+                }
 
-                if amount >= 100:
-                    return {
-                        "merchant": merchant,
-                        "category": category,
-                        "amount": round(amount, 2),
-                        "date": date,
-                        "source_id": source_id,
-                    }
-
-        # Step 3: Paid via bank
-        idx = body_lower.find("paid via bank")
-
-        if idx != -1:
-
-            snippet = clean_body[idx:idx+120]
-
-            m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", snippet)
-
-            if m:
-                amount = float(m.group(1).replace(",", ""))
-
-                if amount >= 100:
-                    return {
-                        "merchant": merchant,
-                        "category": category,
-                        "amount": round(amount, 2),
-                        "date": date,
-                        "source_id": source_id,
-                    }
-
-        # Step 4: Bank alert fallback
+        # bank alert fallback
         if is_bank_alert:
 
             amount = extract_amount(subject) or extract_amount(body)

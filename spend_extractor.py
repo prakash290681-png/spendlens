@@ -105,30 +105,10 @@ def extract_spend(email: dict, service):
 
     if merchant == "Swiggy Instamart":
 
-        # Prefer bank alerts
         if is_bank_alert:
             amount = extract_amount(subject) or extract_amount(body)
 
             if amount and amount >= 50:
-                return {
-                    "merchant": merchant,
-                    "category": category,
-                    "amount": round(amount, 2),
-                    "date": date,
-                    "source_id": source_id,
-                }
-
-        match = re.search(
-            r"(order\s*total|amount\s*paid|total\s*payable|grand\s*total)"
-            r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
-        )
-
-        if match:
-            amount = float(match.group(2).replace(",", ""))
-
-            if amount >= 50:
                 return {
                     "merchant": merchant,
                     "category": category,
@@ -192,13 +172,13 @@ def extract_spend(email: dict, service):
     # ============================================================
     # ================= SWIGGY RESTAURANT ========================
     # ============================================================
-    # ============================================================
 
     if merchant == "Swiggy":
 
+        # Step 1: Try strong payment keywords first
         match = re.search(
-            r"(order\s*total|grand\s*total|amount\s*paid|total\s*payable|to\s*pay)"
-            r"[^\d₹]{0,100}₹?\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(to\s*pay|order\s*total|grand\s*total|amount\s*paid|total\s*payable)"
+            r".{0,80}?₹\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
             re.IGNORECASE
         )
@@ -215,11 +195,8 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        amount_lines = re.findall(
-            r"([^\n]{0,80}₹\s*[\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
-        )
+        # Step 2: fallback scanning
+        amount_lines = re.findall(r"[^\n]{0,80}₹\s*[\d,]+(?:\.\d{1,2})?", clean_body)
 
         values = []
 
@@ -227,18 +204,14 @@ def extract_spend(email: dict, service):
 
             lower = line.lower()
 
-            # ignore non-payment rows
-            if "item total" in lower:
-                continue
-            if "discount" in lower:
-                continue
-            if "promo" in lower:
-                continue
-            if "coupon" in lower:
-                continue
-            if "delivery fee" in lower:
-                continue
-            if "tax" in lower:
+            if any(x in lower for x in [
+                "item total",
+                "discount",
+                "promo",
+                "coupon",
+                "delivery fee",
+                "tax"
+            ]):
                 continue
 
             m = re.search(r"₹\s*([\d,]+(?:\.\d{1,2})?)", line)
@@ -252,7 +225,8 @@ def extract_spend(email: dict, service):
                 values.append(val)
 
         if values:
-            amount = max(values)
+
+            amount = min(values)
 
             return {
                 "merchant": merchant,

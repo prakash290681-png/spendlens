@@ -3,17 +3,50 @@
 3) Is it possible to make the extraction fast, currently it extracts all emails from gmail, can we limit the ingestion to only merchant emails?
 4) Add JioMartGrocery
 
+----------
+Updated roadmap
+✅ Phase 1 – Stabilization
+✔ spend_extractor.py
+✔ ingest.py
+🔄 Phase 2 – Remaining cleanup
+gmail_service.py
+auth.py
+main.py
+🧪 Phase 3 – Production review
+
+A quick pass to check for:
+
+Unused imports
+Commented-out code
+Dead code
+Missing .gitignore entries
+Dependency cleanup
+📦 Phase 4 – Golden Backup
+
+We'll create:
+
+Git commit
+Git tag (v1.0-beta)
+GitHub push
+Source ZIP
+Database backup
+
 
 
 --------------------------------------
-To access the url in local machine--- need to start the server: python -m uvicorn main:app --reload
-URL is:: http://127.0.0.1:8000
+To access the url in local machine--- you need to first start the server by giving this prompt: python -m uvicorn main:app --reload
+C:\Users\Prakash\spendlens> python -m uvicorn main:app --reload
+
+Now try URL:: http://127.0.0.1:8000
+
+For any changes, its better you do it locally, test it locally and if working fine then deploy on render.
 If deployed on Render then its not needed to restart server : URL is: https://spendlens-zrgw.onrender.com
 
-
+---------------------
 To check monthly transactions:
 http://127.0.0.1:8000/debug/month/2026-07
 
+--------------------------------
 To delete transactions in SQLDBLite
 DELETE FROM transactions
 WHERE merchant = 'Swiggy'
@@ -26,3 +59,14 @@ FROM transactions
 WHERE merchant = 'Swiggy'
   AND date >= '2026-07-01'
   AND date < '2026-08-01';
+---------------------------------
+Push your latest code to GitHub
+
+Open cmd: go to cd C:\Users\Prakash\spendlens
+git add .
+git commit -m "Fix Swiggy payment extraction"
+git push origin main
+
+--------------------------
+
+

@@ -554,7 +554,6 @@ def ai_insights(request: Request, month: str | None = None):
 # -------------------------------------------------
 @app.get("/insights/score")
 def spend_score(request: Request, month: str | None = None):
-    print("score called with month:", month)
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401)

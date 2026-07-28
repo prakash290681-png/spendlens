@@ -8,14 +8,15 @@ from gmail_service import fetch_recent_emails
 
 
 def ingest_gmail_spends(access_token: str, user_id: int, month: str):
-    print("🚀 INGEST STARTED FOR USER:", user_id, "MONTH:", month)
+    print(f"🚀 Starting Gmail ingestion | User: {user_id} | Month: {month}")
 
     emails, service = fetch_recent_emails(
         access_token,
         month,
         return_service=True
     )
-
+    print(f"📧 Retrieved {len(emails)} email(s) from Gmail.")
+    
     db = SessionLocal()
     inserted = 0
 
@@ -23,13 +24,11 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
         for email in emails:
 
             try:
-                print("FETCHED SUBJECT:", email["Subject"])
-
+                
                 spend = extract_spend(email, service)
-                print("RETURNED FROM PARSER:", spend)
 
                 if not spend:
-                    print("❌ SKIPPED BY EXTRACTOR:", email["Subject"])
+                    print(f"⚠️ Skipped email (no spend detected): {email.get('Subject', 'No Subject')}")
                     continue
 
                 spend["user_id"] = user_id
@@ -47,7 +46,7 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
                 )
 
                 if existing:
-                    print("⛔ SKIP source duplicate:", spend["source_id"])
+                    print(f"⏭️ Skipped duplicate Gmail message: {spend['source_id']}")
                     continue
 
                 # =====================================================
@@ -65,7 +64,10 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
                 )
 
                 if similar:
-                    print("⛔ SKIP possible duplicate:", spend)
+                    print(
+                        f"⏭️ Skipped possible duplicate | "
+                        f"{spend['merchant']} | ₹{spend['amount']} | {spend['date']}"
+)
                     continue
 
                 # =====================================================
@@ -78,25 +80,21 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
             except Exception:
                 db.rollback()
 
-                print("\n" + "=" * 80)
-                print("❌ ERROR PROCESSING EMAIL")
-                print("SUBJECT:", email.get("Subject"))
-                print("MESSAGE ID:", email.get("id"))
+                print("❌ Error processing email")
+                print(f"Subject   : {email.get('Subject', 'Unknown')}")
+                print(f"Message ID: {email.get('id', 'Unknown')}")
                 traceback.print_exc()
-                print("=" * 80 + "\n")
 
                 # Continue with next email
                 continue
 
-        print(f"✅ INSERTED {inserted} TRANSACTIONS")
+        print(f"✅ Gmail ingestion completed. Inserted {inserted} new transactions.")
 
     except Exception:
         db.rollback()
 
-        print("\n" + "=" * 80)
-        print("❌ INGESTION FAILED")
+        print("❌ Gmail ingestion failed.")
         traceback.print_exc()
-        print("=" * 80 + "\n")
 
     finally:
         db.close()

@@ -167,15 +167,7 @@ def extract_spend(email: dict, service):
                     "date": date,
                     "source_id": source_id,
                 }
-            
-        print("=" * 80)
-        print("BLINKIT/ZEPTO PARSE FAILED")
-        print("Subject:", subject)
-        print("Merchant:", merchant)
-        print("FROM:", sender)
-        print("BODY:")
-        print(clean_body[:3000])
-        print("=" * 80)
+        
         return None
 
 
@@ -184,11 +176,6 @@ def extract_spend(email: dict, service):
 # ============================================================
 
     if merchant == "Swiggy":
-
-        print("=" * 80)
-        print("SWIGGY EMAIL BODY")
-        print(clean_body)
-        print("=" * 80)
 
         payment_patterns = [
             r"paid\s*via\s*(?:credit/debit|credit\s*/\s*debit|credit|debit)\s*card.*?₹\s*([\d,]+(?:\.\d{1,2})?)",
@@ -204,8 +191,6 @@ def extract_spend(email: dict, service):
 
         for pattern in payment_patterns:
 
-            print("Trying:", pattern)
-            print("Pattern =", repr(pattern))
             match = re.search(
                 pattern,
                 clean_body,
@@ -215,9 +200,7 @@ def extract_spend(email: dict, service):
             if match:
 
                 amount = float(match.group(1).replace(",", ""))
-
-                print("Matched payment:", amount)
-
+                
                 if amount >= 100:
                     return {
                         "merchant": merchant,
@@ -240,8 +223,6 @@ def extract_spend(email: dict, service):
         if match:
 
             amount = float(match.group(2).replace(",", ""))
-
-            print("Matched order total:", amount)
 
             if amount >= 100:
                 return {
@@ -271,8 +252,6 @@ def extract_spend(email: dict, service):
 
             amount = max(values)
 
-            print("Fallback largest:", amount)
-
             return {
                 "merchant": merchant,
                 "category": category,
@@ -291,8 +270,6 @@ def extract_spend(email: dict, service):
 
             if amount and amount >= 100:
 
-                print("Bank alert:", amount)
-
                 return {
                     "merchant": merchant,
                     "category": category,
@@ -300,11 +277,5 @@ def extract_spend(email: dict, service):
                     "date": date,
                     "source_id": source_id,
                 }
-
-        print("=" * 80)
-        print("SWIGGY PARSE FAILED")
-        print(subject)
-        print(clean_body[:3000])
-        print("=" * 80)
 
         return None

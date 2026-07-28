@@ -111,7 +111,8 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
         f'after:{start} before:{end}'
     )
 
-    print("🔎 QUERY:", query)
+    print(f"🔎 Searching Gmail for month {month}")
+    print(f"📋 Gmail query: {query}")
     emails = []
     page_token = None
 
@@ -125,10 +126,9 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
             ).execute()
 
             messages = results.get("messages", [])
-            print("📨 BATCH COUNT:", len(messages))
+            print(f"📨 Retrieved {len(messages)} email(s) in current batch.")
 
             for msg in messages:
-                print("➡️ FETCHING MSG ID:", msg["id"])
                 email = get_email_content(service, msg["id"])
 
                 subject = (email.get("Subject") or "").lower()
@@ -144,10 +144,8 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
                 ]
 
                 if any(word in subject for word in skip_words):
-                    print("🚫 SKIPPED:", email.get("Subject"))
+                    print(f"⏭️ Skipped promotional/OTP email: {email.get('Subject', 'No Subject')}")
                     continue
-                print("   FROM   :", email.get("From"))
-                print("   SUBJECT:", email.get("Subject"))
                 emails.append(email)
 
             page_token = results.get("nextPageToken")
@@ -158,7 +156,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
         print("❌ GMAIL FETCH ERROR:", e)
         emails = []
 
-    print("✅ TOTAL EMAILS FETCHED:", len(emails))
+    print(f"✅ Gmail fetch completed. {len(emails)} email(s) ready for processing.")
 
     if return_service:
         return emails, service

@@ -2,6 +2,7 @@
 # Allow HTTP OAuth for LOCAL development
 # -------------------------------------------------
 import os
+import traceback
 
 # Allow HTTP OAuth for LOCAL development
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
@@ -166,47 +167,42 @@ def callback(request: Request):
         request.session["user_email"] = user.email
         db.close()
 
-                # 5️⃣ Gmail Ingestion (Debug Mode)
+                # 5️⃣ Gmail ingestion
         current_month = datetime.utcnow().strftime("%Y-%m")
         previous_month = get_previous_month(current_month)
         third_month = get_previous_month(previous_month)
 
-        print("=" * 80)
-        print("STARTING GMAIL INGESTION")
-        print(f"User: {email}")
-        print(f"Months: {current_month}, {previous_month}, {third_month}")
-        print("=" * 80)
+        print(f"🚀 Starting Gmail ingestion for {email}")
+        print(
+            f"📅 Months to process: "
+            f"{current_month}, {previous_month}, {third_month}"
+        )
 
         try:
-            print(f"--> Ingesting {current_month}")
+            print(f"📥 Processing {current_month}")
             ingest_gmail_spends(credentials.token, user.id, current_month)
 
-            print(f"--> Ingesting {previous_month}")
+            print(f"📥 Processing {previous_month}")
             ingest_gmail_spends(credentials.token, user.id, previous_month)
 
-            print(f"--> Ingesting {third_month}")
+            print(f"📥 Processing {third_month}")
             ingest_gmail_spends(credentials.token, user.id, third_month)
 
-            print("✅ ALL INGESTION COMPLETED")
+            print("✅ Gmail ingestion completed successfully.")
 
         except Exception as e:
             import traceback
 
-            print("\n" + "=" * 80)
-            print("❌ GMAIL INGESTION FAILED")
-            print(f"Error: {e}")
+            print(f"❌ Gmail ingestion failed: {e}")
             traceback.print_exc()
-            print("=" * 80)
 
         return RedirectResponse("/dashboard")
 
     except Exception as e:
         import traceback
 
-        print("=" * 80)
-        print("AUTH CALLBACK FAILED")
+        print("❌ OAuth callback failed.")
         traceback.print_exc()
-        print("=" * 80)
 
         return JSONResponse(
             status_code=500,

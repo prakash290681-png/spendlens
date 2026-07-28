@@ -36,3 +36,7 @@ __pycache__/
 *.db-wal
 *.db-shm
 *.db-journal
+
+# Backup files
+*.zip
+backups/

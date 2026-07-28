@@ -16,6 +16,7 @@ def extract_amount(text: str):
     ]
 
     for p in patterns:
+
         m = re.search(p, text, re.IGNORECASE)
         if m:
             return float(m.group(1).replace(",", ""))
@@ -33,7 +34,8 @@ def extract_spend(email: dict, service):
     date = normalize_date(email.get("Date"))
     source_id = email.get("id")
 
-    clean_body = re.sub(r"\s+", " ", body)
+    clean_body = re.sub(r"<[^>]+>", " ", body)
+    clean_body = re.sub(r"\s+", " ", clean_body)
 
     full_text = f"{subject} {sender} {body}"
     merchant = detect_merchant(full_text)
@@ -165,24 +167,82 @@ def extract_spend(email: dict, service):
                     "date": date,
                     "source_id": source_id,
                 }
-
+            
+        print("=" * 80)
+        print("BLINKIT/ZEPTO PARSE FAILED")
+        print("Subject:", subject)
+        print("Merchant:", merchant)
+        print("FROM:", sender)
+        print("BODY:")
+        print(clean_body[:3000])
+        print("=" * 80)
         return None
 
 
 # ============================================================
 # ================= SWIGGY RESTAURANT ========================
 # ============================================================
+
     if merchant == "Swiggy":
 
+        print("=" * 80)
+        print("SWIGGY EMAIL BODY")
+        print(clean_body)
+        print("=" * 80)
+
+        payment_patterns = [
+            r"paid\s*via\s*(?:credit/debit|credit\s*/\s*debit|credit|debit)\s*card.*?₹\s*([\d,]+(?:\.\d{1,2})?)",
+
+            r"paid\s*via\s*upi.*?₹\s*([\d,]+(?:\.\d{1,2})?)",
+
+            r"paid\s*via\s*bank.*?₹\s*([\d,]+(?:\.\d{1,2})?)",
+        ]
+
+        # --------------------------------------------
+        # 1. Final payment amount
+        # --------------------------------------------
+
+        for pattern in payment_patterns:
+
+            print("Trying:", pattern)
+            print("Pattern =", repr(pattern))
+            match = re.search(
+                pattern,
+                clean_body,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                amount = float(match.group(1).replace(",", ""))
+
+                print("Matched payment:", amount)
+
+                if amount >= 100:
+                    return {
+                        "merchant": merchant,
+                        "category": category,
+                        "amount": round(amount, 2),
+                        "date": date,
+                        "source_id": source_id,
+                    }
+
+        # --------------------------------------------
+        # 2. Order Total / Grand Total
+        # --------------------------------------------
+
         match = re.search(
-            r"(order\s*total|grand\s*total)[^₹]{0,200}₹\s*([\d,]+(?:\.\d{1,2})?)",
+            r"(order\s*total|grand\s*total|amount\s*paid|total\s*paid).*?₹\s*([\d,]+(?:\.\d{1,2})?)",
             clean_body,
-            re.IGNORECASE
+            re.IGNORECASE | re.DOTALL
         )
 
         if match:
+
             amount = float(match.group(2).replace(",", ""))
 
+            print("Matched order total:", amount)
+
             if amount >= 100:
                 return {
                     "merchant": merchant,
@@ -192,31 +252,47 @@ def extract_spend(email: dict, service):
                     "source_id": source_id,
                 }
 
-        # fallback: Paid Via Bank
-        match = re.search(
-            r"paid\s*via\s*bank[^₹]{0,200}₹\s*([\d,]+(?:\.\d{1,2})?)",
-            clean_body,
-            re.IGNORECASE
+        # --------------------------------------------
+        # 3. Largest amount
+        # --------------------------------------------
+
+        amounts = re.findall(
+            r"₹\s*([\d,]+(?:\.\d{1,2})?)",
+            clean_body
         )
 
-        if match:
-            amount = float(match.group(1).replace(",", ""))
+        values = [
+            float(a.replace(",", ""))
+            for a in amounts
+            if float(a.replace(",", "")) >= 100
+        ]
 
-            if amount >= 100:
-                return {
-                    "merchant": merchant,
-                    "category": category,
-                    "amount": round(amount, 2),
-                    "date": date,
-                    "source_id": source_id,
-                }
+        if values:
 
-        # bank alert fallback
+            amount = max(values)
+
+            print("Fallback largest:", amount)
+
+            return {
+                "merchant": merchant,
+                "category": category,
+                "amount": round(amount, 2),
+                "date": date,
+                "source_id": source_id,
+            }
+
+        # --------------------------------------------
+        # 4. Bank alert
+        # --------------------------------------------
+
         if is_bank_alert:
 
             amount = extract_amount(subject) or extract_amount(body)
 
             if amount and amount >= 100:
+
+                print("Bank alert:", amount)
+
                 return {
                     "merchant": merchant,
                     "category": category,
@@ -224,5 +300,11 @@ def extract_spend(email: dict, service):
                     "date": date,
                     "source_id": source_id,
                 }
+
+        print("=" * 80)
+        print("SWIGGY PARSE FAILED")
+        print(subject)
+        print(clean_body[:3000])
+        print("=" * 80)
 
         return None

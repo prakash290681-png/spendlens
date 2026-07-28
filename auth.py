@@ -2,7 +2,12 @@
 # Allow HTTP OAuth for LOCAL development
 # -------------------------------------------------
 import os
+
+# Allow HTTP OAuth for LOCAL development
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+# Ignore harmless scope ordering/difference checks
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
 from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -161,29 +166,53 @@ def callback(request: Request):
         request.session["user_email"] = user.email
         db.close()
 
-        # 5️⃣ Ingestion isolation (does NOT block login)
+                # 5️⃣ Gmail Ingestion (Debug Mode)
         current_month = datetime.utcnow().strftime("%Y-%m")
         previous_month = get_previous_month(current_month)
         third_month = get_previous_month(previous_month)
 
+        print("=" * 80)
+        print("STARTING GMAIL INGESTION")
+        print(f"User: {email}")
+        print(f"Months: {current_month}, {previous_month}, {third_month}")
+        print("=" * 80)
 
         try:
+            print(f"--> Ingesting {current_month}")
             ingest_gmail_spends(credentials.token, user.id, current_month)
+
+            print(f"--> Ingesting {previous_month}")
             ingest_gmail_spends(credentials.token, user.id, previous_month)
+
+            print(f"--> Ingesting {third_month}")
             ingest_gmail_spends(credentials.token, user.id, third_month)
 
-        except Exception:
-            # Log internally if you want, but do not fail login
-            pass
+            print("✅ ALL INGESTION COMPLETED")
+
+        except Exception as e:
+            import traceback
+
+            print("\n" + "=" * 80)
+            print("❌ GMAIL INGESTION FAILED")
+            print(f"Error: {e}")
+            traceback.print_exc()
+            print("=" * 80)
 
         return RedirectResponse("/dashboard")
 
-    except Exception:
+    except Exception as e:
+        import traceback
+
+        print("=" * 80)
+        print("AUTH CALLBACK FAILED")
+        traceback.print_exc()
+        print("=" * 80)
+
         return JSONResponse(
             status_code=500,
             content={
                 "status": "auth_failed",
-                "reason": "unexpected_error"
+                "reason": str(e)
             }
         )
 # -------------------------------------------------

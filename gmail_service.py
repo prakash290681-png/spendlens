@@ -146,6 +146,7 @@ def fetch_recent_emails(access_token: str, month: str, return_service=False):
                 if any(word in subject for word in skip_words):
                     print("🚫 SKIPPED:", email.get("Subject"))
                     continue
+                print("   FROM   :", email.get("From"))
                 print("   SUBJECT:", email.get("Subject"))
                 emails.append(email)
 

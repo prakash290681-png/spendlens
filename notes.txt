@@ -1,0 +1,28 @@
+1) Ingestion took about a minute.. it was extracting all emails from last 3 months... how to expedite this
+2) Do i need to start the server, if i give this url to someone to test do i need to start this server so test user can check their spending or will it be ON for them forever?
+3) Is it possible to make the extraction fast, currently it extracts all emails from gmail, can we limit the ingestion to only merchant emails?
+4) Add JioMartGrocery
+
+
+
+--------------------------------------
+To access the url in local machine--- need to start the server: python -m uvicorn main:app --reload
+URL is:: http://127.0.0.1:8000
+If deployed on Render then its not needed to restart server : URL is: https://spendlens-zrgw.onrender.com
+
+
+To check monthly transactions:
+http://127.0.0.1:8000/debug/month/2026-07
+
+To delete transactions in SQLDBLite
+DELETE FROM transactions
+WHERE merchant = 'Swiggy'
+  AND date >= '2026-07-01'
+  AND date < '2026-08-01';
+
+To verify Transactions are deleted:
+SELECT id, merchant, amount, date
+FROM transactions
+WHERE merchant = 'Swiggy'
+  AND date >= '2026-07-01'
+  AND date < '2026-08-01';

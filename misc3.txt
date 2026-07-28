@@ -1,0 +1,101 @@
+“I built something that tracks food delivery spending automatically. Would love honest feedback.”
+Ask:
+What surprised you?
+What felt confusing?
+Would you pay ₹99/month for this? Why or why not?
+
+Call it - Food delivery spending optimizer OR
+A smart food spending behavior tracker using email intelligence:
+
+Spendlens Score:
+1️⃣ Budget Control (40 points)
+
+This checks: Did you stay within your monthly budget? If you stay within the budget [Restaurant: ₹2000/Grocery: ₹5000], then full 20 points per category. If you exceed budget, then you points reduce gradually.
+
+2️⃣ Order Frequency (25 points)
+
+This checks: How many total orders did you place? You set: Ideal orders = 8 per month, So if order frequency is 8 or fewer → full 25 points
+More than 8 → lose 2 points per extra order
+
+3️⃣ Weekend Balance (15 points)
+
+This checks: Are you overspending on weekends? If: Weekend spend ≤ 50% of total → full 15 points. If: Weekend-heavy → score drops
+
+4️⃣ Late Night Orders (10 points)
+
+This checks: Did you order after 10 PM? If: No late night orders → full 10 points. Each late night order reduces score by 2 points.
+
+5️⃣ Growth (10 points – currently frozen)
+
+Are you spending more than last month? If spending increased: Score reduced.
+
+Right now you’ve frozen it to 10 for stability.
+
+
+Next steps:
+2- Share it with 50 users and collect feedback
+3- Buy a domain--- once you hear that users are using and giving feedback
+4- Payment gateway
+Later:
+Mobile App- Progressive Web App
+International market
+
+--To check who logged in and when--
+https://spendlens-zrgw.onrender.com/debug/events
+
+--URL for testing
+https://spendlens-zrgw.onrender.com/
+
+Free version will give current and last month
+Premium can get access to last 6 months... But how to do this. Also if someone selects Dec now, it keeps loading, this should be corrected
+
+Or simulate upgrade button in UI
+-------------------------------------------------------------
+What Premium Should Eventually Show
+
+When you’re ready, here’s what makes it truly premium-worthy:
+
+1️⃣ Score Optimization Plan
+
+Instead of:
+
+Reduce 3 orders to gain up to +6 points.
+
+Make it:
+
+Your optimized score: 82 → 94
+Estimated annual savings: ₹18,000
+
+That’s powerful.
+
+2️⃣ Personalized Targeting
+
+Examples:
+
+“Avoid ordering after 10 PM — saves ₹4,200/year.”
+
+“Weekend orders are 42% of spend.”
+
+“You overspend most on Sundays.”
+
+That feels intelligent.
+
+3️⃣ Score Projection Simulator
+
+Premium:
+
+“If you reduce 2 restaurant orders next month, your projected score becomes 91.”
+
+That’s addictive.
+
+4️⃣ Behavioral Pattern Detection
+
+Premium-only examples:
+
+“You order 2.3× more during stressful weeks.”
+
+“Salary week spike detected.”
+
+“Order frequency increases after 8 PM.”
+
+That’s data intelligence.

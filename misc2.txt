@@ -1,0 +1,47 @@
+
+prak logs jan
+
+[{"id":13,"merchant":"Zomato","amount":283.65,"date":"2026-01-07T14:43:23","source_id":"19b98e99f3afadeb"}
+,{"id":12,"merchant":"Swiggy","amount":173.0,"date":"2026-01-12T20:16:43","source_id":"19bb2ac6fb500ff8"}
+,{"id":10,"merchant":"Swiggy","amount":204.0,"date":"2026-01-14T19:59:33","source_id":"19bbce96ed1fdea6"}
+,{"id":9,"merchant":"Swiggy","amount":783.0,"date":"2026-01-17T16:28:51","source_id":"19bccc9bb2abccae"},
+{"id":8,"merchant":"Zomato","amount":235.25,"date":"2026-01-17T16:32:43","source_id":"19bcccd4ee4c563f"},
+{"id":7,"merchant":"Zomato","amount":157.94,"date":"2026-01-18T04:57:54","source_id":"19bcf7785d6c81c3"},
+{"id":6,"merchant":"Swiggy","amount":213.0,"date":"2026-01-21T19:45:08","source_id":"19be0e8c2216e1ef"}
+,{"id":5,"merchant":"Swiggy","amount":483.0,"date":"2026-01-25T10:42:03","source_id":"19bf4bf1bae9891c"},
+{"id":4,"merchant":"Zomato","amount":172.25,"date":"2026-01-26T05:33:39","source_id":"19bf8cb1f32ff03b"}]
+
+my Zepto
+474 8jan and 221 16 jan 
+254.84 14feb
+
+my blinkit
+201 24jan
+325 1feb 
+
+ayu
+Jan--3183.75
+[{"id":20,"merchant":"Swiggy Instamart","amount":522.0,"date":"2026-01-01T02:45:43","source_id":"19b777262dd6153f"},
+{"id":19,"merchant":"Swiggy Instamart","amount":376.0,"date":"2026-01-01T03:09:13","source_id":"19b7787e6b6afcf7"},
+{"id":18,"merchant":"Blinkit","amount":258.0,"date":"2026-01-02T11:00:14","source_id":"19b7e5d7dc45d0b8"},
+{"id":17,"merchant":"Swiggy","amount":212.0,"date":"2026-01-02T12:20:17","source_id":"19b7ea6c73efccbd"},
+{"id":16,"merchant":"Swiggy Instamart","amount":299.0,"date":"2026-01-12T13:20:55","source_id":"19bb25de3e0610ee"},
+{"id":15,"merchant":"Swiggy","amount":169.0,"date":"2026-01-18T03:38:53","source_id":"19bcf2f2ba25a21c"},
+{"id":14,"merchant":"Swiggy Instamart","amount":415.0,"date":"2026-01-19T00:24:42","source_id":"19bd3a3c3935ae08"},
+{"id":13,"merchant":"Swiggy","amount":245.0,"date":"2026-01-23T11:33:26","source_id":"19beaa16ef51d867"},
+{"id":12,"merchant":"Blinkit","amount":125.0,"date":"2026-01-26T23:45:34","source_id":"19bfcb2ceee9d04f"},
+{"id":11,"merchant":"Swiggy","amount":223.0,"date":"2026-01-30T12:31:31","source_id":"19c0ee31ebfb47ae"}]
+3 jan 339.75 zomato
+
+ayu feb---6289.03
+[{"id":10,"merchant":"Blinkit","amount":236.0,"date":"2026-02-02T16:49:00","source_id":"19c1f41f18a5ef47"},
+{"id":9,"merchant":"Swiggy Instamart","amount":221.0,"date":"2026-02-03T00:33:11","source_id":"19c20eae8483690f"},
+{"id":8,"merchant":"Swiggy","amount":464.0,"date":"2026-02-03T11:43:46","source_id":"19c2350d8f42162f"},
+{"id":7,"merchant":"Blinkit","amount":273.0,"date":"2026-02-04T13:37:27","source_id":"19c28df4bb690725"},
+{"id":6,"merchant":"Blinkit","amount":210.0,"date":"2026-02-05T00:04:28","source_id":"19c2b1d58cff8530"},
+{"id":5,"merchant":"Swiggy Instamart","amount":224.0,"date":"2026-02-08T01:41:45","source_id":"19c3ae97b7f60d50"},
+{"id":4,"merchant":"Swiggy","amount":249.0,"date":"2026-02-08T12:17:47","source_id":"19c3d2fc914a9c0d"},
+{"id":3,"merchant":"Blinkit","amount":316.0,"date":"2026-02-10T16:27:26","source_id":"19c4861134cd4000"}
+,{"id":2,"merchant":"Blinkit","amount":1137.0,"date":"2026-02-13T09:25:43","source_id":"19c56520f9d58ac8"},
+{"id":1,"merchant":"Blinkit","amount":1493.0,"date":"2026-02-13T11:07:51","source_id":"19c56af9ac930db2"}]
+13 feb zommato 1466.03

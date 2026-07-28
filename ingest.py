@@ -1,4 +1,6 @@
 from datetime import timedelta
+import traceback
+
 from database import SessionLocal
 from models import Transaction
 from spend_extractor import extract_spend
@@ -19,65 +21,82 @@ def ingest_gmail_spends(access_token: str, user_id: int, month: str):
 
     try:
         for email in emails:
-            print("FETCHED SUBJECT:", email["Subject"])
 
-            spend = extract_spend(email, service)
+            try:
+                print("FETCHED SUBJECT:", email["Subject"])
 
-            if not spend:
-                print("❌ SKIPPED BY EXTRACTOR:", email["Subject"])
-                continue
+                spend = extract_spend(email, service)
+                print("RETURNED FROM PARSER:", spend)
 
-            spend["user_id"] = user_id
+                if not spend:
+                    print("❌ SKIPPED BY EXTRACTOR:", email["Subject"])
+                    continue
 
-            # =====================================================
-            # 1️⃣ HARD DUPLICATE → SAME GMAIL MESSAGE
-            # =====================================================
-            existing = (
-                db.query(Transaction)
-                .filter(
-                    Transaction.user_id == user_id,
-                    Transaction.source_id == spend["source_id"],
+                spend["user_id"] = user_id
+
+                # =====================================================
+                # 1️⃣ HARD DUPLICATE → SAME GMAIL MESSAGE
+                # =====================================================
+                existing = (
+                    db.query(Transaction)
+                    .filter(
+                        Transaction.user_id == user_id,
+                        Transaction.source_id == spend["source_id"],
+                    )
+                    .first()
                 )
-                .first()
-            )
 
-            if existing:
-                print("⛔ SKIP source duplicate:", spend["source_id"])
-                continue
+                if existing:
+                    print("⛔ SKIP source duplicate:", spend["source_id"])
+                    continue
 
-
-            # =====================================================
-            # 2️⃣ SOFT DUPLICATE → ONLY WARN, DO NOT BLOCK
-            # =====================================================
-            similar = (
-                db.query(Transaction)
-                .filter(
-                    Transaction.user_id == user_id,
-                    Transaction.amount == spend["amount"],
-                    Transaction.date >= spend["date"] - timedelta(hours=6),
-                    Transaction.date <= spend["date"] + timedelta(hours=6),
+                # =====================================================
+                # 2️⃣ SOFT DUPLICATE
+                # =====================================================
+                similar = (
+                    db.query(Transaction)
+                    .filter(
+                        Transaction.user_id == user_id,
+                        Transaction.amount == spend["amount"],
+                        Transaction.date >= spend["date"] - timedelta(hours=6),
+                        Transaction.date <= spend["date"] + timedelta(hours=6),
+                    )
+                    .first()
                 )
-                .first()
-            )
 
-            if similar:
-                print("⛔ SKIP possible duplicate:", spend)
+                if similar:
+                    print("⛔ SKIP possible duplicate:", spend)
+                    continue
+
+                # =====================================================
+                # INSERT
+                # =====================================================
+                db.add(Transaction(**spend))
+                db.commit()
+                inserted += 1
+
+            except Exception:
+                db.rollback()
+
+                print("\n" + "=" * 80)
+                print("❌ ERROR PROCESSING EMAIL")
+                print("SUBJECT:", email.get("Subject"))
+                print("MESSAGE ID:", email.get("id"))
+                traceback.print_exc()
+                print("=" * 80 + "\n")
+
+                # Continue with next email
                 continue
-
-
-
-            # =====================================================
-            # INSERT
-            # =====================================================
-            db.add(Transaction(**spend))
-            db.commit()
-            inserted += 1
 
         print(f"✅ INSERTED {inserted} TRANSACTIONS")
 
-    except Exception as e:
+    except Exception:
         db.rollback()
-        print("❌ INGEST ERROR:", e)
+
+        print("\n" + "=" * 80)
+        print("❌ INGESTION FAILED")
+        traceback.print_exc()
+        print("=" * 80 + "\n")
 
     finally:
         db.close()

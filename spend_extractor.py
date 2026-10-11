@@ -37,6 +37,25 @@ def extract_spend(email: dict, service):
     clean_body = re.sub(r"<[^>]+>", " ", body)
     clean_body = re.sub(r"\s+", " ", clean_body)
 
+    # Ignore explicit refund / reversal notifications before merchant extraction.
+    # This is deliberately targeted: a generic mention of "refund" is not enough.
+    reversal_text = re.sub(r"<[^>]+>", " ", f"{subject} {sender} {body}")
+    reversal_text = re.sub(r"\s+", " ", reversal_text).lower()
+
+    reversal_patterns = [
+        r"\btransaction\s+reversal\b",
+        r"\breversal\s+of\s+(?:rs\.?|inr|₹)\s*[\d,]+(?:\.\d{1,2})?",
+        r"\b(?:refund|refunded)\b.{0,80}\b(?:initiated|processed|credited|issued)\b",
+        r"\b(?:initiated|processed|credited|issued)\b.{0,80}\b(?:refund|refunded)\b",
+    ]
+
+    if any(re.search(pattern, reversal_text, re.IGNORECASE) for pattern in reversal_patterns):
+        print(
+            f"⏭️ Skipping explicit refund/reversal email: "
+            f"{subject or 'No Subject'} | {sender}"
+        )
+        return None
+
     full_text = f"{subject} {sender} {body}"
     merchant = detect_merchant(full_text)
     if not merchant:
